@@ -1,0 +1,2020 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MST 穿線管理系統（店家）</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Bebas+Neue&display=swap');
+:root {
+  --primary:#0ea5e9; --primary-dark:#0284c7;
+  --dark:#0f172a; --dark2:#1e293b; --dark3:#334155;
+  --mid:#64748b; --white:#fff;
+  --success:#10b981; --warning:#f59e0b; --danger:#ef4444;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--dark);color:var(--white);min-height:100vh;}
+
+/* Header */
+.header{background:var(--dark2);border-bottom:1px solid var(--dark3);padding:0 20px;display:flex;align-items:center;gap:14px;height:60px;position:sticky;top:0;z-index:100;}
+.logo-text{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:2px;color:var(--primary);}
+.logo-sub{font-size:0.72rem;color:var(--mid);margin-top:-3px;}
+.nav-btn{padding:7px 14px;border-radius:7px;border:1px solid var(--dark3);background:transparent;color:var(--mid);font-family:'Noto Sans TC',sans-serif;font-size:0.85rem;cursor:pointer;margin-left:auto;}
+.nav-btn:hover{color:var(--white);border-color:var(--white);}
+
+/* Step wrap */
+.step-wrap{display:none;padding:20px;max-width:540px;margin:0 auto;}
+.step-wrap.active{display:block;}
+
+/* Progress */
+.progress-bar{display:flex;align-items:flex-start;justify-content:center;margin-bottom:28px;}
+.progress-step{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;position:relative;}
+.progress-step:not(:last-child)::after{content:'';position:absolute;top:17px;left:60%;width:80%;height:2px;background:var(--dark3);z-index:0;}
+.progress-step.done:not(:last-child)::after,.progress-step.active:not(:last-child)::after{background:var(--primary);}
+.step-circle{width:34px;height:34px;border-radius:50%;border:2px solid var(--dark3);background:var(--dark2);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:0.85rem;color:var(--mid);position:relative;z-index:1;transition:all 0.2s;}
+.progress-step.active .step-circle{border-color:var(--primary);background:var(--primary);color:#fff;}
+.progress-step.done .step-circle{border-color:var(--success);background:var(--success);color:#fff;}
+.step-label{font-size:0.7rem;color:var(--mid);text-align:center;}
+.progress-step.active .step-label{color:var(--primary);font-weight:700;}
+.progress-step.done .step-label{color:var(--success);}
+
+/* Choice cards */
+.step-title{font-size:1.3rem;font-weight:900;text-align:center;margin-bottom:20px;}
+.step-title span{color:var(--primary);}
+.choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.choice-card{background:var(--dark2);border:2px solid var(--dark3);border-radius:14px;padding:32px 16px;text-align:center;cursor:pointer;transition:all 0.2s;display:flex;flex-direction:column;align-items:center;gap:12px;}
+.choice-card:hover{border-color:var(--primary);background:rgba(14,165,233,0.07);transform:translateY(-2px);}
+.choice-icon{font-size:3rem;line-height:1;}
+.choice-title{font-size:1.1rem;font-weight:900;}
+.choice-sub{font-size:0.78rem;color:var(--mid);}
+
+/* Back btn */
+.back-btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:7px;border:1px solid var(--dark3);background:transparent;color:var(--mid);font-size:0.85rem;font-family:'Noto Sans TC',sans-serif;cursor:pointer;margin-bottom:16px;transition:all 0.2s;}
+.back-btn:hover{border-color:var(--white);color:var(--white);}
+
+/* Form cards (白底) */
+.form-card{background:#fff;border-radius:12px;overflow:hidden;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,0.15);}
+.form-card-hd{background:#2c3e50;color:#fff;padding:12px 16px;font-size:0.9rem;font-weight:700;display:flex;align-items:center;gap:7px;}
+.form-card-body{padding:16px;}
+.fc-label{font-size:0.8rem;font-weight:600;color:#555;margin-bottom:5px;display:block;}
+.fc-input{width:100%;padding:10px 12px;border:1.5px solid #dde1e7;border-radius:7px;font-size:0.92rem;font-family:'Noto Sans TC',sans-serif;background:#f8f9fa;color:#2c3e50;box-sizing:border-box;transition:border-color 0.2s;}
+.fc-input:disabled{background:#eef0f2;color:#8a94a3;cursor:not-allowed;border-color:#dde1e7;}
+.fc-input:focus{outline:none;border-color:#2980b9;background:#fff;}
+.fc-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.fc-row.single{grid-template-columns:1fr;}
+.fc-check-row{display:flex;align-items:center;gap:10px;padding:11px 13px;border:1.5px solid #dde1e7;border-radius:7px;background:#f8f9fa;margin-bottom:9px;cursor:pointer;font-size:0.88rem;color:#2c3e50;}
+.fc-check-row input[type=checkbox]{width:16px;height:16px;accent-color:#2980b9;cursor:pointer;flex-shrink:0;}
+.fc-addon-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px;}
+.fc-addon-item{display:flex;align-items:center;gap:7px;padding:9px 11px;border-radius:7px;border:1.5px solid #dde1e7;background:#f8f9fa;cursor:pointer;font-size:0.82rem;color:#2c3e50;transition:all 0.15s;}
+.fc-addon-item:hover{border-color:#e67e22;}
+.fc-addon-item.checked{border-color:#e67e22;background:#fef9f0;}
+.fc-addon-item input[type=checkbox]{width:14px;height:14px;accent-color:#e67e22;cursor:pointer;flex-shrink:0;}
+.fc-addon-price{margin-left:auto;color:#e67e22;font-weight:700;font-size:0.78rem;white-space:nowrap;}
+.fc-checkout{background:#f0fdf4;border:1.5px solid #86efac;border-radius:9px;padding:14px;margin-bottom:4px;}
+.fc-total{background:#2c3e50;border-radius:9px;padding:13px 18px;display:flex;align-items:center;justify-content:space-between;margin:14px 0 8px;}
+.fc-total-label{font-size:0.88rem;color:#94a3b8;}
+.fc-total-amount{font-family:'Bebas Neue',sans-serif;font-size:1.9rem;color:#0ea5e9;letter-spacing:1px;}
+.fc-submit{width:100%;padding:14px;background:#2980b9;color:#fff;border:none;border-radius:9px;font-size:1rem;font-weight:700;font-family:'Noto Sans TC',sans-serif;cursor:pointer;transition:background 0.2s;display:flex;align-items:center;justify-content:center;gap:7px;margin-top:12px;}
+.fc-submit:hover{background:#1a6fa0;}
+.fc-submit:disabled{background:#94a3b8;cursor:not-allowed;}
+
+/* Tension */
+.fc-tension-pair{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.fc-tension-row{display:flex;align-items:center;gap:8px;background:#f8f9fa;border:1.5px solid #dde1e7;border-radius:7px;padding:9px 12px;}
+.fc-tension-btn{width:32px;height:32px;border-radius:50%;border:none;background:#2c3e50;color:#fff;font-size:1.05rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background 0.15s;}
+.fc-tension-btn:hover{background:#2980b9;}
+.fc-tension-val{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:#2980b9;line-height:1;}
+.fc-tension-unit{font-size:0.68rem;color:#999;}
+.fc-unit-toggle{display:flex;border:1.5px solid #dde1e7;border-radius:6px;overflow:hidden;}
+.fc-unit-btn{padding:4px 11px;border:none;font-size:0.75rem;font-weight:700;cursor:pointer;font-family:'Noto Sans TC',sans-serif;transition:all 0.15s;}
+.fc-unit-btn.active{background:#2980b9;color:#fff;}
+.fc-unit-btn:not(.active){background:#f8f9fa;color:#888;}
+
+/* Status */
+.status-line{display:flex;align-items:center;gap:7px;font-size:0.86rem;font-weight:600;min-height:26px;margin-top:9px;}
+.status-line.loading{color:var(--warning);}
+.status-line.success{color:var(--success);}
+.status-line.error{color:var(--danger);}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-radius:50%;border-top-color:currentColor;animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* Booking */
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;}
+.stat-card{background:var(--dark2);border:1px solid var(--dark3);border-radius:10px;padding:14px;text-align:center;}
+.stat-num{font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--primary);line-height:1;}
+.stat-label{font-size:0.72rem;color:var(--mid);margin-top:3px;}
+.booking-card{background:var(--dark2);border:1px solid var(--dark3);border-radius:12px;padding:18px;}
+.booking-date-row{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
+.booking-date-row label{font-size:0.82rem;color:var(--mid);}
+.date-input{padding:8px 12px;border-radius:7px;border:1px solid var(--dark3);background:var(--dark);color:var(--white);font-size:0.9rem;font-family:'Noto Sans TC',sans-serif;color-scheme:dark;}
+.slots-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.slot{padding:11px 5px;border-radius:7px;border:1px solid var(--success);background:transparent;color:var(--success);font-size:0.85rem;font-weight:700;cursor:pointer;transition:all 0.15s;text-align:center;font-family:'Noto Sans TC',sans-serif;}
+.slot:hover{background:var(--success);color:#fff;}
+.slot.booked{border-color:var(--dark3);background:var(--dark3);color:var(--mid);cursor:not-allowed;text-decoration:line-through;}
+
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;justify-content:center;align-items:center;}
+.modal-overlay.open{display:flex;}
+.modal-box{background:var(--dark2);border:1px solid var(--dark3);border-radius:14px;padding:24px;width:90%;max-width:360px;}
+.modal-box h3{font-size:1.05rem;margin-bottom:18px;color:var(--primary);}
+.modal-close{float:right;background:none;border:none;color:var(--mid);font-size:1.2rem;cursor:pointer;}
+.modal-field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
+.modal-field label{font-size:0.78rem;color:var(--mid);font-weight:600;}
+.modal-field input{padding:9px 12px;border-radius:7px;border:1px solid var(--dark3);background:var(--dark);color:var(--white);font-family:'Noto Sans TC',sans-serif;font-size:0.9rem;}
+.btn-confirm{width:100%;padding:12px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:0.95rem;font-weight:700;font-family:'Noto Sans TC',sans-serif;cursor:pointer;margin-top:8px;}
+.btn-confirm:disabled{background:var(--dark3);cursor:not-allowed;}
+
+/* Settings */
+.settings-card{background:var(--dark2);border:1px solid var(--dark3);border-radius:12px;padding:18px;margin-bottom:14px;}
+.settings-card h3{font-size:0.95rem;font-weight:700;color:var(--primary);margin-bottom:14px;}
+.url-group{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
+.url-group label{font-size:0.78rem;color:var(--mid);font-weight:600;text-transform:uppercase;letter-spacing:0.4px;}
+.url-group input{padding:9px 12px;border-radius:7px;border:1px solid var(--dark3);background:var(--dark);color:var(--white);font-family:monospace;font-size:0.78rem;}
+.btn-save{padding:10px 24px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:0.9rem;font-weight:700;font-family:'Noto Sans TC',sans-serif;cursor:pointer;margin-top:4px;}
+
+/* Debug */
+.debug-toggle-row{display:flex;align-items:center;gap:9px;cursor:pointer;margin-top:12px;padding:11px 13px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:8px;}
+.debug-toggle-row input{width:15px;height:15px;accent-color:#f59e0b;cursor:pointer;}
+.debug-toggle-row .dtlabel{font-size:0.85rem;font-weight:700;color:#f59e0b;}
+.debug-toggle-row .dtsub{font-size:0.74rem;color:#64748b;}
+#debugPanel{display:none;max-width:540px;margin:0 auto;padding:0 20px 20px;}
+.debug-inner{background:var(--dark2);border:1px solid #f59e0b;border-radius:12px;overflow:hidden;}
+.debug-hd{background:rgba(245,158,11,0.15);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(245,158,11,0.3);}
+.debug-hd span{font-weight:700;color:#f59e0b;font-size:0.95rem;}
+.debug-hd-btns{display:flex;gap:7px;}
+.debug-hd-btns button{padding:5px 12px;border-radius:5px;font-size:0.78rem;cursor:pointer;}
+#debugOutput{padding:16px;}
+#debugRaw{background:var(--dark);border:1px solid var(--dark3);border-radius:7px;padding:14px;font-size:0.75rem;color:#94a3b8;overflow-x:auto;white-space:pre-wrap;margin-top:8px;}
+
+/* ── 急件 ── */
+.urgent-option {
+  display:flex;align-items:center;gap:14px;
+  padding:14px 16px;border-radius:10px;
+  border:1.5px solid rgba(239,68,68,0.4);
+  background:rgba(239,68,68,0.05);
+  cursor:pointer;transition:all 0.2s;
+}
+.urgent-option:hover { border-color:#ef4444;background:rgba(239,68,68,0.12);transform:translateX(3px); }
+.urgent-tag {
+  padding:5px 10px;border-radius:7px;font-weight:900;font-size:0.85rem;white-space:nowrap;
+  background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid #ef4444;
+}
+.urgent-time-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px; }
+.urgent-time-btn {
+  padding:11px 6px;border-radius:8px;border:1px solid var(--dark3);
+  background:var(--dark);color:var(--white);font-size:0.85rem;font-weight:700;
+  cursor:pointer;transition:all 0.15s;text-align:center;font-family:'Noto Sans TC',sans-serif;
+}
+.urgent-time-btn:hover { border-color:#ef4444;background:rgba(239,68,68,0.12); }
+.urgent-time-btn.past { border-color:var(--dark3);color:var(--mid);cursor:not-allowed;opacity:0.4; }
+
+/* ── 急件選項 ── */
+.urgent-option {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 16px; border-radius: 10px;
+  border: 1.5px solid rgba(239,68,68,0.3);
+  background: rgba(239,68,68,0.05);
+  cursor: pointer; transition: all 0.2s;
+}
+.urgent-option:hover { border-color: #ef4444; background: rgba(239,68,68,0.1); transform: translateY(-1px); }
+.urgent-tag {
+  padding: 6px 12px; border-radius: 8px; font-size: 0.85rem; font-weight: 900;
+  white-space: nowrap; background: rgba(239,68,68,0.15); color: #ef4444;
+  border: 1px solid #ef4444;
+}
+
+.urgent-time-grid {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 4px;
+}
+.urgent-time-btn {
+  padding: 10px 6px; border-radius: 8px; border: 1px solid var(--dark3);
+  background: var(--dark); color: var(--white); cursor: pointer;
+  font-family: 'Noto Sans TC', sans-serif; text-align: center; transition: all 0.15s;
+}
+.urgent-time-btn:hover:not(:disabled) { border-color: #ef4444; background: rgba(239,68,68,0.1); }
+.urgent-time-btn.past { color: var(--mid); cursor: not-allowed; opacity: 0.4; }
+
+@media(max-width:480px){
+  .urgent-time-grid{grid-template-columns:repeat(2,1fr);}
+}
+.string-picker-btn{width:100%;padding:10px 12px;border:1.5px solid #dde1e7;border-radius:7px;font-size:0.92rem;font-family:'Noto Sans TC',sans-serif;background:#f8f9fa;color:#2c3e50;box-sizing:border-box;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;text-align:left;transition:border-color 0.2s;}
+.string-picker-btn:hover{border-color:#2980b9;}
+.string-picker-btn.placeholder{color:#8a94a3;}
+.string-picker-btn::after{content:'▾';color:#8a94a3;flex-shrink:0;}
+.brand-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+.brand-btn{padding:18px 10px;border:1.5px solid #dde1e7;border-radius:9px;background:#f8f9fa;font-weight:700;font-size:0.92rem;color:#2c3e50;cursor:pointer;transition:all 0.15s;font-family:'Noto Sans TC',sans-serif;}
+.brand-btn:hover{border-color:#2980b9;background:rgba(41,128,185,0.07);transform:translateY(-1px);}
+.string-item-list{display:flex;flex-direction:column;gap:8px;max-height:55vh;overflow-y:auto;}
+.string-item-row{display:flex;justify-content:space-between;align-items:center;padding:11px 13px;border:1.5px solid #dde1e7;border-radius:8px;background:#f8f9fa;cursor:pointer;font-size:0.88rem;color:#2c3e50;transition:all 0.15s;}
+.string-item-row:hover{border-color:#2980b9;background:rgba(41,128,185,0.07);}
+.string-item-price{font-weight:700;color:#2980b9;font-size:0.85rem;flex-shrink:0;margin-left:10px;}
+.string-pick-back{background:none;border:none;color:var(--primary);font-size:0.85rem;cursor:pointer;margin-bottom:10px;padding:0;font-family:'Noto Sans TC',sans-serif;}
+.cs-opt-row{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border:1.5px solid #dde1e7;border-radius:7px;background:#f8f9fa;font-size:0.88rem;color:#2c3e50;}
+.cs-opt-del{background:none;border:none;color:#e74c3c;font-size:1.05rem;cursor:pointer;padding:0 4px;line-height:1;}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <svg width="34" height="34" viewBox="0 0 36 36" fill="none" style="flex-shrink:0">
+    <rect width="36" height="36" rx="8" fill="#0ea5e9"/>
+    <path d="M8 26L18 10L28 26" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <path d="M11 21L25 21" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+  </svg>
+  <div>
+    <div class="logo-text">MST</div>
+    <div class="logo-sub" style="color:#f59e0b;">店家管理系統</div>
+  </div>
+  <button class="nav-btn" id="nav-settings">⚙️ 設定</button>
+</div>
+
+<!-- STEP 1：首頁 -->
+<div class="step-wrap active" id="step1">
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:20px;">
+    <div style="text-align:center;">
+      <div style="font-size:4rem;margin-bottom:12px;">🎾</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:2.4rem;letter-spacing:3px;color:var(--primary);">MST</div>
+      <div style="font-size:0.9rem;color:var(--mid);margin-top:4px;">穿線管理系統</div>
+    </div>
+    <div class="choice-card" id="choice-stringing" style="width:100%;max-width:320px;padding:40px 24px;">
+      <div class="choice-icon">✍️</div>
+      <div class="choice-title" style="font-size:1.4rem;">預約穿線</div>
+      <div class="choice-sub" style="font-size:0.9rem;">點此開始填寫穿線單</div>
+    </div>
+    <div class="choice-card" id="choice-urgent" style="width:100%;max-width:320px;padding:28px 24px;border-color:#ef4444;background:rgba(239,68,68,0.06);">
+      <div class="choice-icon">⚡</div>
+      <div class="choice-title" style="font-size:1.3rem;color:#ef4444;">急件需求</div>
+      <div class="choice-sub" style="font-size:0.9rem;">當日 / 隔日急件取件</div>
+    </div>
+  </div>
+</div>
+
+<!-- 預約規則確認 Modal -->
+<div class="modal-overlay" id="bookingRulesModal">
+  <div class="modal-box" style="max-width:420px;">
+    <h3 style="color:var(--primary);margin-bottom:16px;">📋 MST 穿線預約規則</h3>
+    <div style="background:var(--dark);border-radius:10px;padding:16px;margin-bottom:18px;line-height:1.9;font-size:0.9rem;">
+      <p style="margin-bottom:10px;">1. 預約時間超過 <strong style="color:#f59e0b;">15 分鐘</strong>尚未抵達，將無法進行原預約穿線服務。</p>
+      <p style="margin-bottom:10px;">2. 若超過 15 分鐘抵達店內，將視為<strong style="color:#ef4444;">現場急件</strong>，由當班穿線師評估是否能受理，並酌收額外加急費用。</p>
+      <p style="margin-bottom:10px;">3. 預約後當日調整時段累計達 <strong style="color:#f59e0b;">兩次</strong>，即自動取消該預約，需重新預約。</p>
+      <p style="margin-top:14px;color:var(--mid);font-size:0.85rem;text-align:center;">感謝您的理解與配合，讓我們一起守時守約！🙏</p>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button id="bookingRulesCancel" style="flex:1;padding:12px;border-radius:8px;border:1px solid var(--dark3);background:transparent;color:var(--mid);font-family:'Noto Sans TC',sans-serif;font-size:0.9rem;cursor:pointer;">取消</button>
+      <button id="bookingRulesOk" style="flex:2;padding:12px;border-radius:8px;border:none;background:var(--primary);color:white;font-family:'Noto Sans TC',sans-serif;font-size:0.9rem;font-weight:700;cursor:pointer;">我已了解，繼續預約 →</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal-overlay" id="urgentModal">
+  <div class="modal-box" style="max-width:420px;">
+    <button class="modal-close" id="closeUrgentBtn">✕</button>
+    <h3 style="color:#ef4444;">⚡ 選擇急件類型</h3>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
+      <div class="urgent-option" data-fee="300" data-label="當日取件（自收拍起 1 小時後取）">
+        <div class="urgent-tag">＋NT$300</div>
+        <div>
+          <div style="font-weight:700;font-size:0.95rem;">當日取件</div>
+          <div style="font-size:0.8rem;color:var(--mid);margin-top:2px;">自收拍起 1 小時後取</div>
+        </div>
+      </div>
+      <div class="urgent-option" data-fee="200" data-label="當日取件（自收拍起 3 小時後取）">
+        <div class="urgent-tag" style="background:rgba(245,158,11,0.15);color:#f59e0b;border-color:#f59e0b;">＋NT$200</div>
+        <div>
+          <div style="font-weight:700;font-size:0.95rem;">當日取件</div>
+          <div style="font-size:0.8rem;color:var(--mid);margin-top:2px;">自收拍起 3 小時後取</div>
+        </div>
+      </div>
+      <div class="urgent-option" data-fee="100" data-label="隔日取件（自收拍起 12 小時後取）">
+        <div class="urgent-tag" style="background:rgba(16,185,129,0.12);color:#10b981;border-color:#10b981;">＋NT$100</div>
+        <div>
+          <div style="font-weight:700;font-size:0.95rem;">隔日取件</div>
+          <div style="font-size:0.8rem;color:var(--mid);margin-top:2px;">自收拍起 12 小時後取</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 急件確認 Modal -->
+<div class="modal-overlay" id="urgentConfirmModal">
+  <div class="modal-box" style="max-width:420px;">
+    <button class="modal-close" id="urgentConfirmClose">✕</button>
+    <div style="text-align:center;margin-bottom:16px;">
+      <div style="font-size:2rem;margin-bottom:6px;">⚡</div>
+      <h3 style="color:#ef4444;" id="urgentConfirmTitle">當日取件</h3>
+      <p id="urgentConfirmSub" style="font-size:0.84rem;color:var(--mid);margin-top:4px;">自收拍起 1 小時後取</p>
+    </div>
+    <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:0.85rem;line-height:1.7;color:#fca5a5;">
+      ⚠️ 收拍起算時間以店內營業時間計算（10:00–22:00）
+    </div>
+    <p style="font-size:0.88rem;font-weight:700;margin-bottom:8px;">選擇預計收拍時間：</p>
+    <div class="urgent-time-grid" id="urgentTimeGrid"></div>
+    <p style="font-size:0.78rem;color:var(--mid);margin-top:10px;text-align:center;">
+      急件費用 <strong id="urgentConfirmFee" style="color:#ef4444;">＋NT$300</strong> 將自動加入總計
+    </p>
+  </div>
+</div>
+
+<!-- STEP 2：選擇預約時段 -->
+<div class="step-wrap" id="step2">
+  <div class="progress-bar">
+    <div class="progress-step done">
+      <div class="step-circle">✓</div>
+      <div class="step-label">開始</div>
+    </div>
+    <div class="progress-step active">
+      <div class="step-circle">2</div>
+      <div class="step-label">預約時段</div>
+    </div>
+    <div class="progress-step">
+      <div class="step-circle">3</div>
+      <div class="step-label">球拍類型</div>
+    </div>
+    <div class="progress-step">
+      <div class="step-circle">4</div>
+      <div class="step-label">穿線資訊</div>
+    </div>
+  </div>
+  <button class="back-btn" id="back-s2">← 返回</button>
+  <div class="step-title">選擇 <span>預約時段</span></div>
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-num" id="stat-today">—</div><div class="stat-label">今日預約數</div></div>
+    <div class="stat-card"><div class="stat-num" id="stat-selected">—</div><div class="stat-label">選定日期</div></div>
+    <div class="stat-card"><div class="stat-num" id="stat-avail">—</div><div class="stat-label">可預約時段</div></div>
+  </div>
+  <div class="booking-card">
+    <div class="booking-date-row">
+      <label>選擇日期</label>
+      <input type="date" class="date-input" id="bookDate">
+      <span id="bookLoadMsg" style="font-size:0.8rem;color:#f59e0b;"></span>
+    </div>
+    <div class="slots-grid" id="slotsGrid"></div>
+  </div>
+  <button class="fc-submit" id="skip-booking-btn" style="background:var(--dark3);margin-top:12px;">略過時段，直接填寫穿線單 →</button>
+</div>
+
+<!-- STEP 3：選擇球拍類型 -->
+<div class="step-wrap" id="step3">
+  <div class="progress-bar">
+    <div class="progress-step done">
+      <div class="step-circle">✓</div>
+      <div class="step-label">開始</div>
+    </div>
+    <div class="progress-step done">
+      <div class="step-circle">✓</div>
+      <div class="step-label">預約時段</div>
+    </div>
+    <div class="progress-step active">
+      <div class="step-circle">3</div>
+      <div class="step-label">球拍類型</div>
+    </div>
+    <div class="progress-step">
+      <div class="step-circle">4</div>
+      <div class="step-label">穿線資訊</div>
+    </div>
+  </div>
+  <button class="back-btn" id="back-s3">← 返回</button>
+  <div class="step-title">選擇 <span>球拍類型</span></div>
+  <div class="choice-grid">
+    <div class="choice-card" id="choice-badminton">
+      <div class="choice-icon">🏸</div>
+      <div class="choice-title">羽球拍</div>
+      <div class="choice-sub">羽球穿線<br>BG65 / NBG99...</div>
+    </div>
+    <div class="choice-card" id="choice-tennis">
+      <div class="choice-icon">🎾</div>
+      <div class="choice-title">網球拍</div>
+      <div class="choice-sub">網球穿線<br>RPM / Alu Power...</div>
+    </div>
+  </div>
+</div>
+
+<!-- STEP 4：穿線單填寫 -->
+<div class="step-wrap" id="step4">
+  <div class="progress-bar">
+    <div class="progress-step done">
+      <div class="step-circle">✓</div>
+      <div class="step-label">開始</div>
+    </div>
+    <div class="progress-step done">
+      <div class="step-circle">✓</div>
+      <div class="step-label">預約時段</div>
+    </div>
+    <div class="progress-step done">
+      <div class="step-circle">✓</div>
+      <div class="step-label">球拍類型</div>
+    </div>
+    <div class="progress-step active">
+      <div class="step-circle">4</div>
+      <div class="step-label">穿線資訊</div>
+    </div>
+  </div>
+  <button class="back-btn" id="back-s4">← 返回</button>
+  <div class="step-title" id="step4-title">🏸 <span>羽球</span> 穿線單填寫</div>
+
+  <!-- 客戶資料 -->
+  <div class="form-card">
+    <div class="form-card-hd">👤 客戶資料</div>
+    <div class="form-card-body">
+      <div class="fc-row">
+        <div><label class="fc-label">姓名</label><input class="fc-input" type="text" id="f_name" placeholder="請輸入姓名"></div>
+        <div><label class="fc-label">電話</label><input class="fc-input" type="tel" id="f_phone" placeholder="09xx-xxx-xxx"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 線材選擇 -->
+  <div class="form-card">
+    <div class="form-card-hd">🎾 線材選擇</div>
+    <div class="form-card-body">
+      <label class="fc-check-row" id="row-bos">
+        <input type="checkbox" id="f_bos"> 自備線 <strong>NT$300</strong>
+      </label>
+      <label class="fc-check-row" id="row-bos-gut">
+        <input type="checkbox" id="f_bos_gut"> 自備羊腸線 <strong>NT$350</strong>
+      </label>
+      <label class="fc-check-row" id="row-hybrid" style="display:none;">
+        <input type="checkbox" id="f_hybrid"> 子母線 <strong>(Hybrid - 直橫線不同)</strong>
+      </label>
+      <div id="string-wrap">
+        <div style="margin-bottom:10px;">
+          <label class="fc-label" id="main-str-lbl">線材</label>
+          <button type="button" class="string-picker-btn placeholder" id="f_str_main_display">請選擇線材...</button>
+          <select id="f_str_main" style="display:none;"><option value="">請選擇線材...</option></select>
+        </div>
+        <div id="cross-str-row" style="display:none;">
+          <label class="fc-label">橫線線材</label>
+          <button type="button" class="string-picker-btn placeholder" id="f_str_cross_display">請選擇線材...</button>
+          <select id="f_str_cross" style="display:none;"><option value="">請選擇線材...</option></select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 穿線參數 -->
+  <div class="form-card">
+    <div class="form-card-hd">⚙️ 穿線參數</div>
+    <div class="form-card-body">
+      <!-- 張力 -->
+      <div style="margin-bottom:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <label class="fc-label" style="margin:0;">直線 / 橫線張力</label>
+          <div class="fc-unit-toggle">
+            <button type="button" class="fc-unit-btn active" id="unit-lbs">lbs</button>
+            <button type="button" class="fc-unit-btn" id="unit-kg">kg</button>
+          </div>
+          <input type="hidden" id="f_unit" value="lbs">
+        </div>
+        <div class="fc-tension-pair">
+          <div class="fc-tension-row">
+            <button type="button" class="fc-tension-btn" id="tm-minus">−</button>
+            <div style="flex:1;text-align:center;">
+              <div style="font-size:0.68rem;color:#999;margin-bottom:1px;">直線</div>
+              <div class="fc-tension-val" id="tm-display">45</div>
+              <div class="fc-tension-unit" id="tm-unit">lbs</div>
+            </div>
+            <button type="button" class="fc-tension-btn" id="tm-plus">＋</button>
+            <input type="hidden" id="f_tm" value="45">
+          </div>
+          <div class="fc-tension-row">
+            <button type="button" class="fc-tension-btn" id="tc-minus">−</button>
+            <div style="flex:1;text-align:center;">
+              <div style="font-size:0.68rem;color:#999;margin-bottom:1px;">橫線</div>
+              <div class="fc-tension-val" id="tc-display">45</div>
+              <div class="fc-tension-unit" id="tc-unit">lbs</div>
+            </div>
+            <button type="button" class="fc-tension-btn" id="tc-plus">＋</button>
+            <input type="hidden" id="f_tc" value="45">
+          </div>
+        </div>
+      </div>
+      <!-- 結數（保持常態顯示） -->
+      <div class="fc-row single" style="margin-bottom:0;">
+        <div><label class="fc-label">穿法</label>
+          <select class="fc-input" id="f_knots">
+            <option value="一線兩結 (One Piece 2 Knot)">一線兩結 (One Piece 2 Knot)</option>
+            <option value="二線四結 (Two Piece 4 Knot)">二線四結 (Two Piece 4 Knot)</option>
+          </select>
+        </div>
+      </div>
+      <!-- 客製化需求折疊區 -->
+      <button type="button" id="custom-toggle-btn" style="width:100%;margin-top:14px;padding:10px;background:transparent;border:1.5px dashed #aab;border-radius:8px;color:#2c3e50;font-size:0.88rem;font-weight:700;font-family:'Noto Sans TC',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:all 0.2s;">
+        <span id="custom-toggle-icon">＋</span> 客製化需求（預拉 / Logo / 加購）
+      </button>
+      <div id="custom-section" style="display:none;margin-top:12px;">
+        <div class="fc-row" style="margin-bottom:12px;">
+          <div><label class="fc-label">直線預拉 (%)</label>
+            <select class="fc-input" id="f_pm">
+              <option value="0">無 (0%)</option><option value="2">+2%</option>
+              <option value="5">+5%</option><option value="10">+10%</option>
+            </select>
+          </div>
+          <div><label class="fc-label">橫線預拉 (%)</label>
+            <select class="fc-input" id="f_pc">
+              <option value="0">無 (0%)</option><option value="2">+2%</option>
+              <option value="5">+5%</option><option value="10">+10%</option>
+            </select>
+          </div>
+          <div class="fc-row single" style="margin-bottom:0;grid-column:1/-1;">
+            <div><label class="fc-label">畫Logo (Stencil)</label>
+              <select class="fc-input" id="f_stencil">
+                <option value="不用">不用</option><option value="需要">需要</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <label class="fc-label">加購項目</label>
+        <div class="fc-addon-grid" id="addons-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 取件時間 -->
+  <div class="form-card">
+    <div class="form-card-hd">🕐 取件時間 <span id="due-lock-hint" style="display:none;font-size:0.78rem;font-weight:400;color:#f59e0b;margin-left:6px;">🔒 急件時段已鎖定</span></div>
+    <div class="form-card-body">
+      <select class="fc-input" id="f_due">
+        <option value="" data-fee="0">請選擇...</option>
+        <option value="按照現場排程取拍" data-fee="0">按照現場排程取拍</option>
+        <option value="當日取件（八小時內）+NT$100" data-fee="100">當日取件（八小時內）＋NT$100</option>
+        <option value="三小時內取件 +NT$200" data-fee="200">三小時內取件 ＋NT$200</option>
+        <option value="一小時內取件 +NT$300" data-fee="300">一小時內取件 ＋NT$300</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- 結帳 -->
+  <div class="form-card">
+    <div class="form-card-hd" style="justify-content:space-between;">
+      <span>💳 結帳櫃檯</span>
+      <button type="button" id="checkoutSettingsBtn" style="background:none;border:none;color:#fff;font-size:1.05rem;cursor:pointer;padding:2px 6px;line-height:1;">⚙️</button>
+    </div>
+    <div class="form-card-body">
+      <div class="fc-checkout">
+        <div class="fc-row" style="margin-bottom:0;">
+          <div id="row-payment"><label class="fc-label">付款方式</label>
+            <select class="fc-input" id="f_payment"></select>
+          </div>
+          <div id="row-paid"><label class="fc-label">付款狀態</label>
+            <select class="fc-input" id="f_paid"></select>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:10px;">
+        <label class="fc-label">備註</label>
+        <textarea class="fc-input" id="f_notes" rows="3" placeholder="其他需求說明..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- 總計 -->
+  <div class="fc-total">
+    <span class="fc-total-label">總計</span>
+    <span class="fc-total-amount" id="totalDisplay">NT$ 0</span>
+  </div>
+
+  <!-- Debug toggle -->
+  <label class="debug-toggle-row">
+    <input type="checkbox" id="debugToggle">
+    <span class="dtlabel">🔍 Debug 模式</span>
+    <span class="dtsub">只顯示 payload，不實際寫入</span>
+  </label>
+
+  <button class="fc-submit" id="submitBtn">☁️ 送出穿線單</button>
+  <div id="orderStatus" class="status-line"></div>
+</div>
+
+
+
+<!-- STEP 設定 -->
+<div class="step-wrap" id="step-settings">
+  <button class="back-btn" id="back-settings">← 返回</button>
+  <div class="step-title">⚙️ <span>系統設定</span></div>
+
+  <!-- 時段管理後台 -->
+  <div class="settings-card">
+    <h3>🗓️ 預約時段管理</h3>
+    <p style="font-size:0.82rem;color:var(--mid);margin-bottom:14px;">勾選開放的時段，設定每個時段最多接幾組。設定儲存在本機瀏覽器。</p>
+
+    <!-- 營業時間設定 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div class="url-group">
+        <label>開始時間</label>
+        <select id="slot-start" class="fc-input" style="background:var(--dark);color:var(--white);border-color:var(--dark3);">
+          <option value="8">08:00</option><option value="9">09:00</option>
+          <option value="10" selected>10:00</option><option value="11">11:00</option>
+          <option value="12">12:00</option>
+        </select>
+      </div>
+      <div class="url-group">
+        <label>結束時間</label>
+        <select id="slot-end" class="fc-input" style="background:var(--dark);color:var(--white);border-color:var(--dark3);">
+          <option value="18">18:00</option><option value="19">19:00</option>
+          <option value="20">20:00</option><option value="21">21:00</option>
+          <option value="22" selected>22:00</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- 預設每時段上限 -->
+    <div class="url-group" style="margin-bottom:14px;">
+      <label>每時段預設上限（組）</label>
+      <input type="number" id="slot-default-cap" value="1" min="1" max="10"
+        style="padding:8px 12px;border-radius:7px;border:1px solid var(--dark3);background:var(--dark);color:var(--white);width:100px;">
+    </div>
+
+    <button class="btn-save" id="btn-rebuild-slots" style="margin-bottom:16px;">🔄 重新產生時段表</button>
+
+    <!-- 時段格子 -->
+    <div id="slot-manager-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;"></div>
+
+    <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
+      <button class="btn-save" id="btn-save-slots">💾 儲存時段設定</button>
+      <button class="btn-save" id="btn-select-all" style="background:var(--dark3);">全選</button>
+      <button class="btn-save" id="btn-deselect-all" style="background:var(--dark3);">全不選</button>
+    </div>
+    <div id="slotsSettingStatus" class="status-line"></div>
+  </div>
+
+  <!-- 預約規則設定 -->
+  <div class="settings-card">
+    <h3>📋 預約規則設定</h3>
+    <p style="font-size:0.82rem;color:var(--mid);margin-bottom:16px;">設定客戶可預約的時間範圍與急件規則。</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+      <div class="url-group">
+        <label>最早可預約（幾天後）</label>
+        <select id="rule-min-days" style="padding:8px 12px;border-radius:7px;border:1px solid var(--dark3);background:var(--dark);color:var(--white);width:100%;font-family:'Noto Sans TC',sans-serif;">
+          <option value="0">當天（急件）</option>
+          <option value="1">明天起</option>
+          <option value="2">兩天後起</option>
+          <option value="3" selected>三天後起</option>
+          <option value="7">一週後起</option>
+        </select>
+      </div>
+      <div class="url-group">
+        <label>最多可預約（幾天內）</label>
+        <select id="rule-max-days" style="padding:8px 12px;border-radius:7px;border:1px solid var(--dark3);background:var(--dark);color:var(--white);width:100%;font-family:'Noto Sans TC',sans-serif;">
+          <option value="7">7 天內</option>
+          <option value="14" selected>14 天內</option>
+          <option value="30">30 天內</option>
+          <option value="60">60 天內</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="url-group" style="margin-bottom:14px;">
+      <label>開放急件預約</label>
+      <div style="display:flex;gap:10px;margin-top:6px;">
+        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:0.88rem;">
+          <input type="radio" name="rule-urgent" id="rule-urgent-yes" value="yes" style="accent-color:var(--primary);">
+          <span>開放（顯示急件時段）</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:0.88rem;">
+          <input type="radio" name="rule-urgent" id="rule-urgent-no" value="no" checked style="accent-color:var(--primary);">
+          <span>關閉（隱藏急件選項）</span>
+        </label>
+      </div>
+    </div>
+
+    <button class="btn-save" id="btn-save-rules">💾 儲存預約規則</button>
+    <div id="rulesStatus" class="status-line"></div>
+  </div>
+    <h3>🔗 Google Apps Script 網址</h3>
+    <div class="url-group"><label>穿線開單 Script URL</label><input type="text" id="set_orderUrl" placeholder="https://script.google.com/macros/s/..."></div>
+    <div class="url-group"><label>預約系統 Script URL</label><input type="text" id="set_bookUrl" placeholder="https://script.google.com/macros/s/..."></div>
+    <button class="btn-save" id="saveBtn">💾 儲存設定</button>
+    <div id="settingsStatus" class="status-line"></div>
+  </div>
+  <div class="settings-card" style="display:none;">
+    <h3>📋 試算表欄位（B~N 對齊現有格式）</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:0.8rem;">
+      <tr style="background:var(--dark3);"><th style="padding:6px 9px;text-align:left;">欄</th><th style="padding:6px 9px;text-align:left;">名稱</th><th style="padding:6px 9px;text-align:left;">範例</th></tr>
+      <tr style="border-bottom:1px solid var(--dark3);"><td style="padding:5px 9px;color:var(--primary);">B</td><td style="padding:5px 9px;">姓名</td><td style="padding:5px 9px;color:var(--mid);">王小明</td></tr>
+      <tr style="border-bottom:1px solid var(--dark3);"><td style="padding:5px 9px;color:var(--primary);">C</td><td style="padding:5px 9px;">直線名稱</td><td style="padding:5px 9px;color:var(--mid);">RPM 125</td></tr>
+      <tr style="border-bottom:1px solid var(--dark3);"><td style="padding:5px 9px;color:var(--primary);">D</td><td style="padding:5px 9px;">橫線名稱</td><td style="padding:5px 9px;color:var(--mid);">Alu Power</td></tr>
+      <tr style="border-bottom:1px solid var(--dark3);"><td style="padding:5px 9px;color:var(--primary);">E</td><td style="padding:5px 9px;">直線磅數</td><td style="padding:5px 9px;color:var(--mid);">50</td></tr>
+      <tr style="border-bottom:1px solid var(--dark3);"><td style="padding:5px 9px;color:var(--primary);">F</td><td style="padding:5px 9px;">橫線磅數</td><td style="padding:5px 9px;color:var(--mid);">48</td></tr>
+      <tr style="border-bottom:1px solid var(--dark3);"><td style="padding:5px 9px;color:var(--primary);">G</td><td style="padding:5px 9px;">kg/lbs</td><td style="padding:5px 9px;color:var(--mid);">lbs</td></tr>
+      <tr style="border-bottom:1px solid var(--dark3);"><td style="padding:5px 9px;color:var(--primary);">H</td><td style="padding:5px 9px;">Knot</td><td style="padding:5px 9px;color:var(--mid);">4</td></tr>
+      <tr style="border-bottom:1px solid var(--dark3);"><td style="padding:5px 9px;color:var(--primary);">I</td><td style="padding:5px 9px;">穿線師</td><td style="padding:5px 9px;color:var(--mid);">VC</td></tr>
+      <tr style="border-bottom:1px solid var(--dark3);"><td style="padding:5px 9px;color:var(--primary);">J</td><td style="padding:5px 9px;">日期</td><td style="padding:5px 9px;color:var(--mid);">2025/6/5</td></tr>
+      <tr style="border-bottom:1px solid var(--dark3);"><td style="padding:5px 9px;color:var(--primary);">K</td><td style="padding:5px 9px;">備註</td><td style="padding:5px 9px;color:var(--mid);">輕拍</td></tr>
+      <tr style="border-bottom:1px solid var(--dark3);"><td style="padding:5px 9px;color:var(--primary);">L</td><td style="padding:5px 9px;">直線預拉</td><td style="padding:5px 9px;color:var(--mid);">5%</td></tr>
+      <tr style="border-bottom:1px solid var(--dark3);"><td style="padding:5px 9px;color:var(--primary);">M</td><td style="padding:5px 9px;">橫線預拉</td><td style="padding:5px 9px;color:var(--mid);">5%</td></tr>
+      <tr style="border-bottom:1px solid var(--dark3);"><td style="padding:5px 9px;color:var(--primary);">N</td><td style="padding:5px 9px;">電話</td><td style="padding:5px 9px;color:var(--mid);">0912345678</td></tr>
+      <tr style="border-bottom:1px solid var(--dark3);background:rgba(245,158,11,0.06);"><td style="padding:5px 9px;color:var(--warning);">O✦</td><td style="padding:5px 9px;">球拍型號</td><td style="padding:5px 9px;color:var(--mid);">Astrox 88D</td></tr>
+      <tr style="border-bottom:1px solid var(--dark3);background:rgba(245,158,11,0.06);"><td style="padding:5px 9px;color:var(--warning);">P✦</td><td style="padding:5px 9px;">畫Logo</td><td style="padding:5px 9px;color:var(--mid);">不用</td></tr>
+      <tr style="border-bottom:1px solid var(--dark3);background:rgba(245,158,11,0.06);"><td style="padding:5px 9px;color:var(--warning);">Q✦</td><td style="padding:5px 9px;">加購項目</td><td style="padding:5px 9px;color:var(--mid);">指定穿線師</td></tr>
+      <tr style="border-bottom:1px solid var(--dark3);background:rgba(245,158,11,0.06);"><td style="padding:5px 9px;color:var(--warning);">R✦</td><td style="padding:5px 9px;">小計</td><td style="padding:5px 9px;color:var(--mid);">NT$ 550</td></tr>
+      <tr style="border-bottom:1px solid var(--dark3);background:rgba(245,158,11,0.06);"><td style="padding:5px 9px;color:var(--warning);">S✦</td><td style="padding:5px 9px;">取件時間</td><td style="padding:5px 9px;color:var(--mid);">隔日取件</td></tr>
+      <tr style="border-bottom:1px solid var(--dark3);background:rgba(245,158,11,0.06);"><td style="padding:5px 9px;color:var(--warning);">T✦</td><td style="padding:5px 9px;">付款方式</td><td style="padding:5px 9px;color:var(--mid);">Line Pay</td></tr>
+      <tr style="border-bottom:1px solid var(--dark3);background:rgba(245,158,11,0.06);"><td style="padding:5px 9px;color:var(--warning);">U✦</td><td style="padding:5px 9px;">付款狀態</td><td style="padding:5px 9px;color:var(--mid);">已付款</td></tr>
+      <tr style="background:rgba(245,158,11,0.06);"><td style="padding:5px 9px;color:var(--warning);">V✦</td><td style="padding:5px 9px;">訂單總計</td><td style="padding:5px 9px;color:var(--mid);">NT$ 550</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- Debug Panel -->
+<div id="debugPanel">
+  <div class="debug-inner">
+    <div class="debug-hd">
+      <span>🔍 Payload 預覽</span>
+      <div class="debug-hd-btns">
+        <button id="copyJsonBtn" style="border:1px solid #64748b;background:transparent;color:#94a3b8;border-radius:5px;">📋 複製</button>
+        <button id="closeDebugBtn" style="background:#ef4444;color:#fff;border:none;border-radius:5px;">✕</button>
+      </div>
+    </div>
+    <div id="debugOutput"></div>
+    <details style="padding:0 16px 16px;">
+      <summary style="cursor:pointer;font-size:0.8rem;color:#64748b;padding:6px 0;">▶ 原始 JSON</summary>
+      <pre id="debugRaw"></pre>
+    </details>
+  </div>
+</div>
+
+<!-- 預約 Modal -->
+<div class="modal-overlay" id="bookModal">
+  <div class="modal-box">
+    <button class="modal-close" id="closeModalBtn">✕</button>
+    <h3 id="modalTitle">預約時段</h3>
+    <div class="modal-field"><label>姓名 *</label><input type="text" id="m_name" placeholder="您的姓名"></div>
+    <div class="modal-field"><label>電話 *</label><input type="tel" id="m_phone" placeholder="0912-345-678"></div>
+    <div class="modal-field">
+      <label>球拍類型與數量</label>
+      <select id="m_racket_count" style="width:100%;padding:9px 12px;border-radius:7px;border:1px solid var(--dark3);background:var(--dark);color:var(--white);font-family:'Noto Sans TC',sans-serif;font-size:0.9rem;">
+        <option value="網球拍 1 支">🎾 網球拍 1 支</option>
+        <option value="網球拍 2 支">🎾 網球拍 2 支</option>
+        <option value="網球拍 3 支">🎾 網球拍 3 支</option>
+        <option value="網球拍 4 支以上">🎾 網球拍 4 支以上</option>
+        <option value="羽球拍 1 支">🏸 羽球拍 1 支</option>
+        <option value="羽球拍 2 支">🏸 羽球拍 2 支</option>
+        <option value="羽球拍 3 支">🏸 羽球拍 3 支</option>
+        <option value="羽球拍 4 支以上">🏸 羽球拍 4 支以上</option>
+      </select>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;">
+      <button class="btn-confirm" id="confirmBookAndString">確認 → 填寫穿線資訊</button>
+      <button class="btn-confirm" id="confirmBookDone" style="background:var(--success);">預約完成 →（不填穿線單）</button>
+    </div>
+    <div id="bookStatus" class="status-line"></div>
+  </div>
+</div>
+
+<!-- 線材選擇 Modal -->
+<div class="modal-overlay" id="stringPickModal">
+  <div class="modal-box" style="max-width:400px;">
+    <button class="modal-close" id="stringPickClose">✕</button>
+    <button type="button" class="string-pick-back" id="stringPickBack" style="display:none;">← 返回品牌</button>
+    <h3 id="stringPickTitle">選擇品牌</h3>
+    <div id="stringPickBody"></div>
+  </div>
+</div>
+
+<!-- 結帳欄位設定 Modal -->
+<div class="modal-overlay" id="checkoutSettingsModal">
+  <div class="modal-box" style="max-width:420px;">
+    <button class="modal-close" id="checkoutSettingsClose">✕</button>
+    <h3>結帳欄位設定</h3>
+    <div style="margin-bottom:18px;">
+      <label style="display:flex;align-items:center;gap:8px;font-weight:700;cursor:pointer;margin-bottom:10px;">
+        <input type="checkbox" id="cs_payment_enabled"> 啟用「付款方式」欄位
+      </label>
+      <div id="cs_payment_list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="cs_payment_new" class="fc-input" placeholder="新增付款方式..." style="flex:1;">
+        <button type="button" id="cs_payment_add" class="btn-confirm" style="width:auto;margin-top:0;padding:0 16px;white-space:nowrap;">新增</button>
+      </div>
+    </div>
+    <hr style="border:none;border-top:1px solid #dde1e7;margin:16px 0;">
+    <div>
+      <label style="display:flex;align-items:center;gap:8px;font-weight:700;cursor:pointer;margin-bottom:10px;">
+        <input type="checkbox" id="cs_status_enabled"> 啟用「付款狀態」欄位
+      </label>
+      <div id="cs_status_list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="cs_status_new" class="fc-input" placeholder="新增付款狀態..." style="flex:1;">
+        <button type="button" id="cs_status_add" class="btn-confirm" style="width:auto;margin-top:0;padding:0 16px;white-space:nowrap;">新增</button>
+      </div>
+    </div>
+    <button type="button" id="cs_save" class="btn-confirm" style="width:100%;margin-top:20px;">💾 儲存設定</button>
+  </div>
+</div>
+
+<script>
+// ── 資料 ──
+const STRINGS = {
+  tennis: [
+    {name:'Luxilon 4G Rough',price:900,brand:'Luxilon'},
+    {name:'Luxilon 4G',price:900,brand:'Luxilon'},
+    {name:'Luxilon Alu Power Rough',price:900,brand:'Luxilon'},
+    {name:'Luxilon Alu Power',price:900,brand:'Luxilon'},
+    {name:'Luxilon Element',price:800,brand:'Luxilon'},
+    {name:'Luxilon Savage',price:700,brand:'Luxilon'},
+    {name:'Luxilon Eco Power',price:700,brand:'Luxilon'},
+    {name:'Babolat Touch VS',price:2100,brand:'Babolat'},
+    {name:'Babolat RPM Blast',price:700,brand:'Babolat'},
+    {name:'Babolat RPM Rough',price:700,brand:'Babolat'},
+    {name:'Babolat RPM Team',price:700,brand:'Babolat'},
+    {name:'Babolat RPM Hurricane',price:650,brand:'Babolat'},
+    {name:'Head Hawk Touch',price:900,brand:'Head'},
+    {name:'Head Hawk Power',price:800,brand:'Head'},
+    {name:'Head Sonic Pro Edge',price:600,brand:'Head'},
+    {name:'Head Lynx Tour',price:550,brand:'Head'},
+    {name:'Volkl Power Fiber Pro',price:600,brand:'Volkl'},
+    {name:'Volkl Cyclone',price:500,brand:'Volkl'},
+    {name:'Solinco Mach-10',price:650,brand:'Solinco'},
+    {name:'Solinco Confidential',price:600,brand:'Solinco'},
+    {name:'Solinco Hyper-G',price:550,brand:'Solinco'},
+    {name:'Solinco Tour Bite',price:550,brand:'Solinco'},
+    {name:'Wilson NXT',price:900,brand:'Wilson'},
+    {name:'Wilson Revolve Spin',price:550,brand:'Wilson'},
+    {name:'Yonex Poly Tour Strike',price:650,brand:'Yonex'},
+    {name:'Yonex Poly Tour Spin',price:650,brand:'Yonex'},
+    {name:'Yonex Poly Tour Fire',price:650,brand:'Yonex'},
+    {name:'Yonex Poly Tour Rev',price:650,brand:'Yonex'},
+    {name:'Yonex Poly Tour Pro',price:600,brand:'Yonex'},
+    {name:'Yonex Poly Tour Air',price:600,brand:'Yonex'},
+    {name:'Tecnifibre X-One',price:900,brand:'Tecnifibre'},
+    {name:'Tecnifibre Black Code',price:650,brand:'Tecnifibre'},
+    {name:'Tecnifibre Ice Code',price:650,brand:'Tecnifibre'},
+    {name:'Topspin 全系列',price:500,brand:'Topspin'},
+    {name:'Pro Supex 全系列',price:500,brand:'Pro Supex'},
+    {name:'自備線',price:300,brand:'自備',hybridPrice:150},
+    {name:'自備羊腸線',price:350,brand:'自備',hybridPrice:200},
+  ],
+  badminton: [
+    {name:'Kizuna Z58',price:450,brand:'Kizuna',gauge:0.58},
+    {name:'Kizuna Z61',price:450,brand:'Kizuna',gauge:0.61},
+    {name:'Kizuna Z63',price:450,brand:'Kizuna',gauge:0.63},
+    {name:'Kizuna Z63X',price:450,brand:'Kizuna',gauge:0.63},
+    {name:'Kizuna Z65',price:400,brand:'Kizuna',gauge:0.65},
+    {name:'Kizuna Z66',price:450,brand:'Kizuna',gauge:0.66},
+    {name:'Kizuna Z69',price:400,brand:'Kizuna',gauge:0.69},
+    {name:'Kizuna Z69T',price:430,brand:'Kizuna',gauge:0.69},
+    {name:'Victor VBS61',price:400,brand:'Victor',gauge:0.61},
+    {name:'Victor VBS63',price:400,brand:'Victor',gauge:0.63},
+    {name:'Victor VS63',price:430,brand:'Victor',gauge:0.63},
+    {name:'Victor VBS66N',price:400,brand:'Victor',gauge:0.66},
+    {name:'Victor VBS68',price:400,brand:'Victor',gauge:0.68},
+    {name:'Victor VBS70',price:350,brand:'Victor',gauge:0.70},
+    {name:'Mizuno 65R',price:450,brand:'Mizuno',gauge:0.65},
+    {name:'Mizuno 65H',price:450,brand:'Mizuno',gauge:0.65},
+    {name:'Gosen Ryzonic 58',price:430,brand:'Gosen',gauge:0.58},
+    {name:'Gosen Ryzonic 62',price:430,brand:'Gosen',gauge:0.62},
+    {name:'Gosen Ryzonic 65',price:430,brand:'Gosen',gauge:0.65},
+    {name:'Yonex BG65',price:400,brand:'Yonex',gauge:0.70},
+    {name:'Yonex BG65Ti',price:450,brand:'Yonex',gauge:0.70},
+    {name:'Yonex BG66F',price:480,brand:'Yonex',gauge:0.65},
+    {name:'Yonex BG66UM',price:450,brand:'Yonex',gauge:0.65},
+    {name:'Yonex BG80',price:480,brand:'Yonex',gauge:0.68},
+    {name:'Yonex BG80P',price:480,brand:'Yonex',gauge:0.68},
+    {name:'Yonex BGXB63',price:450,brand:'Yonex',gauge:0.63},
+    {name:'Yonex BGXB65',price:450,brand:'Yonex',gauge:0.65},
+    {name:'Yonex BGXB68',price:450,brand:'Yonex',gauge:0.68},
+    {name:'Yonex BGAS',price:480,brand:'Yonex',gauge:0.61},
+    {name:'Yonex BGAB',price:480,brand:'Yonex',gauge:0.67},
+    {name:'Yonex BGABBT',price:480,brand:'Yonex',gauge:0.72},
+    {name:'Yonex NBG95',price:480,brand:'Yonex',gauge:0.69},
+    {name:'Yonex NBG98',price:480,brand:'Yonex',gauge:0.66},
+    {name:'Yonex NBG99',price:480,brand:'Yonex',gauge:0.69},
+    {name:'自備線',price:300,brand:'自備',hybridPrice:150},
+    {name:'自備羊腸線',price:350,brand:'自備',hybridPrice:200}
+  ]
+};
+const ADDONS = {
+  tennis: [
+    {id:'designated_stringer',label:'指定穿線師',price:200},
+    {id:'racket_check',label:'球拍健檢',price:200},
+    {id:'spec_match',label:'球拍規格匹配',price:200},
+    {id:'spec_adjust',label:'規格調整',price:700},
+    {id:'grip_resize',label:'更改握把尺寸',price:700},
+    {id:'bumper_replace',label:'自備護框條更換',price:250},
+    {id:'grip_repair',label:'握把維修',price:250},
+    {id:'grip_clean',label:'握把清潔費',price:250},
+    {id:'leather_base',label:'自備牛皮底層更換',price:200},
+    {id:'lead_tape',label:'鉛片費(加重>15g)',price:300}
+  ],
+  badminton: [
+    {id:'designated_stringer',label:'指定穿線師',price:200},
+    {id:'racket_check',label:'球拍健檢',price:200},
+    {id:'spec_match',label:'球拍規格匹配',price:200},
+    {id:'spec_adjust',label:'規格調整',price:700},
+    {id:'grip_resize',label:'更改握把尺寸',price:700},
+    {id:'grip_clean',label:'握把清潔費',price:250},
+    {id:'grommet_replace',label:'羽球孔釘更換',price:250}
+  ]
+};
+
+const DEFAULT_ORDER_URL = 'https://script.google.com/macros/s/AKfycbylu3RHQeinWlDfQff6QNgFOySCEMtFMabbXIcgUcT-YWsXyCeLFDwgjQnc3TS4FYYn/exec';
+const DEFAULT_BOOK_URL  = 'https://script.google.com/macros/s/AKfycbylu3RHQeinWlDfQff6QNgFOySCEMtFMabbXIcgUcT-YWsXyCeLFDwgjQnc3TS4FYYn/exec';
+function getOrderUrl(){ return localStorage.getItem('mst_orderUrl') || DEFAULT_ORDER_URL; }
+function getBookUrl() { return localStorage.getItem('mst_bookUrl')  || DEFAULT_BOOK_URL;  }
+
+let currentSport = 'badminton';
+let currentBookDate = '';
+let currentBookTime = '';
+let prevStep = 'step1';
+let currentBookedSlots = [];
+
+// ── 導航 ──
+function showStep(id) {
+  document.querySelectorAll('.step-wrap').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+// ── 穿線表單初始化 ──
+function initForm(sport) {
+  currentSport = sport;
+  // 線材
+  ['f_str_main','f_str_cross'].forEach(id => {
+    const sel = document.getElementById(id);
+    sel.innerHTML = '<option value="">請選擇線材...</option>';
+    STRINGS[sport].forEach(s => {
+      const o = document.createElement('option');
+      o.value = s.name;
+      o.textContent = s.price > 0 ? s.name + '  NT$' + s.price : s.name;
+      o.dataset.price = s.price;
+      if (s.hybridPrice !== undefined) o.dataset.hybridPrice = s.hybridPrice;
+      sel.appendChild(o);
+    });
+  });
+  ['f_str_main_display','f_str_cross_display'].forEach(id => {
+    const disp = document.getElementById(id);
+    disp.textContent = '請選擇線材...';
+    disp.classList.add('placeholder');
+  });
+  // 子母線只網球顯示
+  document.getElementById('row-hybrid').style.display = sport === 'tennis' ? '' : 'none';
+  document.getElementById('f_hybrid').checked = false;
+  updateHybridUI();
+  // 穿法與張力依運動類型設預設值
+  const defaultTension = sport === 'tennis' ? 48 : 24;
+  ['f_tm','f_tc'].forEach(id => document.getElementById(id).value = defaultTension);
+  ['tm-display','tc-display'].forEach(id => document.getElementById(id).textContent = defaultTension);
+  if (sport === 'tennis') {
+    document.getElementById('f_knots').value = '二線四結 (Two Piece 4 Knot)';
+  } else {
+    document.getElementById('f_knots').value = '一線兩結 (One Piece 2 Knot)';
+  }
+  // 加購
+  const grid = document.getElementById('addons-grid');
+  grid.innerHTML = '';
+  ADDONS[sport].forEach(a => {
+    const lbl = document.createElement('label');
+    lbl.className = 'fc-addon-item';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.dataset.price = a.price;
+    cb.addEventListener('change', function(){
+      lbl.classList.toggle('checked', this.checked);
+      calcTotal();
+    });
+    const span = document.createElement('span'); span.textContent = a.label;
+    const price = document.createElement('span'); price.className = 'fc-addon-price'; price.textContent = '$' + a.price;
+    lbl.appendChild(cb); lbl.appendChild(span); lbl.appendChild(price);
+    grid.appendChild(lbl);
+  });
+  calcTotal();
+  applyUrgentRule();
+
+  // 如果是急件流程，帶入取件時間與費用
+  if (window._urgentFee) {
+    const dueEl = document.getElementById('f_due');
+    if (dueEl) {
+      // 找到對應選項或加入臨時選項
+      const urgentValue = `急件：${window._urgentLabel}（${window._urgentDropoff} 收拍 / ${window._urgentPickup} 取件）`;
+      let found = false;
+      Array.from(dueEl.options).forEach(o => { if (o.value === urgentValue) found = true; });
+      if (!found) {
+        const o = document.createElement('option');
+        o.value = urgentValue; o.textContent = urgentValue;
+        o.dataset.fee = window._urgentFee;
+        dueEl.appendChild(o);
+      }
+      dueEl.value = urgentValue;
+      dueEl.disabled = true;
+      dueEl.title = '急件時段已鎖定，如需更改請重新選擇急件流程';
+      const hint = document.getElementById('due-lock-hint');
+      if (hint) hint.style.display = '';
+    }
+    calcTotal();
+    // 急件資訊只套用一次，避免影響下一張訂單
+    window._urgentFee = null;
+    window._urgentLabel = null;
+    window._urgentPickup = null;
+    window._urgentDropoff = null;
+  }
+} {
+  const hybrid = document.getElementById('f_hybrid').checked;
+  document.getElementById('cross-str-row').style.display = hybrid ? '' : 'none';
+  document.getElementById('main-str-lbl').textContent = hybrid ? '直線線材' : '線材';
+}
+
+function updateHybridUI() {
+  const hybrid = document.getElementById('f_hybrid').checked;
+  document.getElementById('cross-str-row').style.display = hybrid ? '' : 'none';
+  document.getElementById('main-str-lbl').textContent = hybrid ? '直線線材' : '線材';
+}
+
+// ── 線材選擇 Modal（品牌 → [線徑] → 線款）──
+let stringPickTarget = 'main';
+let stringPickBackFn = null;
+
+const GAUGE_RANGES = [
+  {label:'0.58~0.62', min:0.58, max:0.62},
+  {label:'0.63~0.66', min:0.63, max:0.66},
+  {label:'0.68~0.70', min:0.68, max:0.70}
+];
+
+function getBrandGroups(sport) {
+  const groups = [];
+  STRINGS[sport].forEach(item => {
+    const brand = item.brand || '其他';
+    let g = groups.find(g => g.brand === brand);
+    if (!g) { g = {brand, items:[]}; groups.push(g); }
+    g.items.push(item);
+  });
+  return groups;
+}
+
+function openStringPicker(target) {
+  stringPickTarget = target;
+  showStringBrandGrid();
+  document.getElementById('stringPickModal').classList.add('open');
+}
+
+function closeStringPicker() {
+  document.getElementById('stringPickModal').classList.remove('open');
+}
+
+function showStringBrandGrid() {
+  stringPickBackFn = null;
+  document.getElementById('stringPickTitle').textContent = '選擇品牌';
+  document.getElementById('stringPickBack').style.display = 'none';
+  const wrap = document.getElementById('stringPickBody');
+  wrap.innerHTML = '';
+  const grid = document.createElement('div');
+  grid.className = 'brand-grid';
+  getBrandGroups(currentSport).forEach(g => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'brand-btn';
+    btn.textContent = g.brand;
+    btn.addEventListener('click', () => {
+      const hasGauge = g.items.some(it => it.gauge !== undefined);
+      if (hasGauge) showStringGaugeGrid(g);
+      else showStringItemList(g, showStringBrandGrid);
+    });
+    grid.appendChild(btn);
+  });
+  wrap.appendChild(grid);
+}
+
+function showStringGaugeGrid(group) {
+  stringPickBackFn = showStringBrandGrid;
+  document.getElementById('stringPickTitle').textContent = group.brand + ' － 選擇線徑';
+  document.getElementById('stringPickBack').style.display = '';
+  const wrap = document.getElementById('stringPickBody');
+  wrap.innerHTML = '';
+  const grid = document.createElement('div');
+  grid.className = 'brand-grid';
+  const matched = new Set();
+  GAUGE_RANGES.forEach(r => {
+    const items = group.items.filter(it => it.gauge !== undefined && it.gauge >= r.min - 0.001 && it.gauge <= r.max + 0.001);
+    if (items.length === 0) return;
+    items.forEach(it => matched.add(it));
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'brand-btn';
+    btn.textContent = r.label + 'mm';
+    btn.addEventListener('click', () => showStringItemList({brand: group.brand, items}, () => showStringGaugeGrid(group)));
+    grid.appendChild(btn);
+  });
+  const otherItems = group.items.filter(it => !matched.has(it));
+  if (otherItems.length > 0) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'brand-btn';
+    btn.textContent = '其他線徑';
+    btn.addEventListener('click', () => showStringItemList({brand: group.brand, items: otherItems}, () => showStringGaugeGrid(group)));
+    grid.appendChild(btn);
+  }
+  wrap.appendChild(grid);
+}
+
+function showStringItemList(group, backFn) {
+  stringPickBackFn = backFn || null;
+  document.getElementById('stringPickTitle').textContent = group.brand;
+  document.getElementById('stringPickBack').style.display = stringPickBackFn ? '' : 'none';
+  const wrap = document.getElementById('stringPickBody');
+  wrap.innerHTML = '';
+  const list = document.createElement('div');
+  list.className = 'string-item-list';
+  group.items.forEach(it => {
+    const row = document.createElement('div');
+    row.className = 'string-item-row';
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = it.name;
+    const priceSpan = document.createElement('span');
+    priceSpan.className = 'string-item-price';
+    priceSpan.textContent = it.price > 0 ? 'NT$' + it.price : '免費';
+    row.appendChild(nameSpan);
+    row.appendChild(priceSpan);
+    row.addEventListener('click', () => selectStringItem(it));
+    list.appendChild(row);
+  });
+  wrap.appendChild(list);
+}
+
+function selectStringItem(it) {
+  const selId  = stringPickTarget === 'main' ? 'f_str_main' : 'f_str_cross';
+  const dispId = stringPickTarget === 'main' ? 'f_str_main_display' : 'f_str_cross_display';
+  const sel = document.getElementById(selId);
+  sel.value = it.name;
+  sel.dispatchEvent(new Event('change'));
+  const disp = document.getElementById(dispId);
+  disp.textContent = it.price > 0 ? it.name + '  NT$' + it.price : it.name;
+  disp.classList.remove('placeholder');
+  closeStringPicker();
+}
+
+// ── 結帳欄位設定（付款方式／付款狀態 可自訂新增刪除／開關）──
+const DEFAULT_CHECKOUT_SETTINGS = {
+  paymentEnabled: true,
+  paymentOptions: ['現金 (Cash)', 'Line Pay', '信用卡', '轉帳'],
+  statusEnabled: true,
+  statusOptions: ['❌ 未付款', '✅ 已付款']
+};
+
+function loadCheckoutSettings() {
+  try {
+    const raw = localStorage.getItem('mst_checkout_settings');
+    if (!raw) return JSON.parse(JSON.stringify(DEFAULT_CHECKOUT_SETTINGS));
+    const parsed = JSON.parse(raw);
+    return Object.assign(JSON.parse(JSON.stringify(DEFAULT_CHECKOUT_SETTINGS)), parsed);
+  } catch (e) {
+    return JSON.parse(JSON.stringify(DEFAULT_CHECKOUT_SETTINGS));
+  }
+}
+
+function saveCheckoutSettingsToStorage() {
+  try { localStorage.setItem('mst_checkout_settings', JSON.stringify(checkoutSettings)); } catch (e) {}
+}
+
+let checkoutSettings = loadCheckoutSettings();
+
+function renderCheckoutFields() {
+  const paymentSel = document.getElementById('f_payment');
+  const prevPayment = paymentSel.value;
+  paymentSel.innerHTML = '';
+  checkoutSettings.paymentOptions.forEach(opt => {
+    const o = document.createElement('option');
+    o.value = opt;
+    o.textContent = opt;
+    paymentSel.appendChild(o);
+  });
+  if (checkoutSettings.paymentOptions.includes(prevPayment)) paymentSel.value = prevPayment;
+
+  const paidSel = document.getElementById('f_paid');
+  const prevPaid = paidSel.value;
+  paidSel.innerHTML = '';
+  checkoutSettings.statusOptions.forEach(opt => {
+    const o = document.createElement('option');
+    o.value = opt;
+    o.textContent = opt;
+    paidSel.appendChild(o);
+  });
+  if (checkoutSettings.statusOptions.includes(prevPaid)) paidSel.value = prevPaid;
+
+  document.getElementById('row-payment').style.display = checkoutSettings.paymentEnabled ? '' : 'none';
+  document.getElementById('row-paid').style.display = checkoutSettings.statusEnabled ? '' : 'none';
+}
+
+function renderCheckoutSettingsModal() {
+  document.getElementById('cs_payment_enabled').checked = checkoutSettings.paymentEnabled;
+  document.getElementById('cs_status_enabled').checked = checkoutSettings.statusEnabled;
+
+  const paymentList = document.getElementById('cs_payment_list');
+  paymentList.innerHTML = '';
+  checkoutSettings.paymentOptions.forEach((opt, idx) => {
+    const row = document.createElement('div');
+    row.className = 'cs-opt-row';
+    const span = document.createElement('span');
+    span.textContent = opt;
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'cs-opt-del';
+    delBtn.textContent = '✕';
+    delBtn.addEventListener('click', () => {
+      checkoutSettings.paymentOptions.splice(idx, 1);
+      renderCheckoutSettingsModal();
+    });
+    row.appendChild(span);
+    row.appendChild(delBtn);
+    paymentList.appendChild(row);
+  });
+
+  const statusList = document.getElementById('cs_status_list');
+  statusList.innerHTML = '';
+  checkoutSettings.statusOptions.forEach((opt, idx) => {
+    const row = document.createElement('div');
+    row.className = 'cs-opt-row';
+    const span = document.createElement('span');
+    span.textContent = opt;
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'cs-opt-del';
+    delBtn.textContent = '✕';
+    delBtn.addEventListener('click', () => {
+      checkoutSettings.statusOptions.splice(idx, 1);
+      renderCheckoutSettingsModal();
+    });
+    row.appendChild(span);
+    row.appendChild(delBtn);
+    statusList.appendChild(row);
+  });
+}
+
+function openCheckoutSettings() {
+  renderCheckoutSettingsModal();
+  document.getElementById('checkoutSettingsModal').classList.add('open');
+}
+
+function closeCheckoutSettings() {
+  document.getElementById('checkoutSettingsModal').classList.remove('open');
+}
+
+function calcTotal() {
+  let total = 0;
+  const bos    = document.getElementById('f_bos').checked;
+  const bosGut = document.getElementById('f_bos_gut').checked;
+  const hybrid = document.getElementById('f_hybrid').checked;
+
+  if (bos) {
+    total += 300; // 自備線
+  } else if (bosGut) {
+    total += 350; // 自備羊腸線
+  } else {
+    const ms = document.getElementById('f_str_main');
+    const mo = ms.options[ms.selectedIndex];
+    const mainPrice = parseInt(mo?.dataset.price) || 0;
+    if (hybrid) {
+      const cs = document.getElementById('f_str_cross');
+      const co = cs.options[cs.selectedIndex];
+      const crossPrice = parseInt(co?.dataset.price) || 0;
+      const mainContribution  = mo?.dataset.hybridPrice !== undefined ? parseInt(mo.dataset.hybridPrice) : Math.ceil(mainPrice / 2);
+      const crossContribution = co?.dataset.hybridPrice !== undefined ? parseInt(co.dataset.hybridPrice) : Math.ceil(crossPrice / 2);
+      total += mainContribution + crossContribution;
+    } else {
+      total += mainPrice;
+    }
+  }
+  document.querySelectorAll('#addons-grid input[type=checkbox]:checked').forEach(cb => {
+    total += parseInt(cb.dataset.price) || 0;
+  });
+  const dueSel = document.getElementById('f_due');
+  const dueOpt = dueSel?.options[dueSel.selectedIndex];
+  total += parseInt(dueOpt?.dataset.fee) || 0;
+  document.getElementById('totalDisplay').textContent = 'NT$ ' + total.toLocaleString();
+}
+
+// ── 送出 ──
+function submitOrder() {
+  const btn    = document.getElementById('submitBtn');
+  const status = document.getElementById('orderStatus');
+  const name   = document.getElementById('f_name').value.trim();
+  const phone  = document.getElementById('f_phone').value.trim();
+  if (!name)  { alert('請填寫客戶姓名'); return; }
+  if (!phone) { alert('請填寫聯絡電話'); return; }
+
+  const bos    = document.getElementById('f_bos').checked;
+  const bosGut = document.getElementById('f_bos_gut').checked;
+  const hybrid = document.getElementById('f_hybrid').checked;
+  // 線種不含價格
+  const mainStr  = bos ? '自備線' : bosGut ? '自備羊腸線' : document.getElementById('f_str_main').value;
+  const crossStr = (bos || bosGut) ? mainStr : (hybrid ? document.getElementById('f_str_cross').value : mainStr);
+  // Knot 只填數字
+  const knotVal = document.getElementById('f_knots').value.includes('一線兩結') ? '2' : '4';
+
+  const addonsArr = [];
+  document.querySelectorAll('#addons-grid input[type=checkbox]:checked').forEach(cb => {
+    addonsArr.push(cb.closest('.fc-addon-item').querySelector('span').textContent);
+  });
+
+  const row = {
+    姓名:     name,
+    直線名稱: mainStr,
+    橫線名稱: crossStr,
+    直線磅數: document.getElementById('f_tm').value,
+    橫線磅數: document.getElementById('f_tc').value,
+    單位:     document.getElementById('f_unit').value,
+    Knot:     knotVal,
+    穿線師:   '',
+    日期:     new Date().toLocaleDateString('zh-TW'),
+    備註:     document.getElementById('f_notes').value,
+    直線預拉: document.getElementById('f_pm').value !== '0' ? document.getElementById('f_pm').value + '%' : '',
+    橫線預拉: document.getElementById('f_pc').value !== '0' ? document.getElementById('f_pc').value + '%' : '',
+    電話:     phone,
+    球拍型號: '',
+    畫Logo:   document.getElementById('f_stencil').value,
+    加購項目: addonsArr.join(', '),
+    小計:     document.getElementById('totalDisplay').textContent,
+    取件時間: document.getElementById('f_due').value,
+    付款方式: document.getElementById('f_payment').value,
+    付款狀態: document.getElementById('f_paid').value,
+    訂單總計: document.getElementById('totalDisplay').textContent,
+    sport:    currentSport === 'tennis' ? '網球' : '羽球',
+    source:   'MST整合系統'
+  };
+
+  if (document.getElementById('debugToggle').checked) {
+    showDebugPanel([row]);
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>&nbsp;上傳中...';
+  status.className = 'status-line loading';
+  status.innerHTML = '<span class="spinner"></span>&nbsp;寫入試算表...';
+
+  // 射後不理：背景送出，不等回應
+  fetch(getOrderUrl(), {
+    method: 'POST', mode: 'no-cors',
+    headers: {'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify(row)
+  }).catch(() => {});
+
+  // 立即顯示成功
+  setTimeout(() => {
+    status.className = 'status-line success';
+    status.textContent = '✅ 已送出！';
+    btn.innerHTML = '☁️ 送出穿線單';
+    btn.disabled = false;
+    resetForm();
+  }, 500);
+}
+
+function resetForm() {
+  ['f_name','f_phone','f_notes'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f_bos').checked     = false;
+  document.getElementById('f_bos_gut').checked = false;
+  document.getElementById('f_hybrid').checked  = false;
+  document.getElementById('string-wrap').style.display = '';
+  updateHybridUI();
+  ['f_str_main','f_str_cross'].forEach(id => document.getElementById(id).selectedIndex = 0);
+  ['f_str_main_display','f_str_cross_display'].forEach(id => {
+    const disp = document.getElementById(id);
+    disp.textContent = '請選擇線材...';
+    disp.classList.add('placeholder');
+  });
+  const defT = currentSport === 'tennis' ? 48 : 24;
+  ['f_tm','f_tc'].forEach(id => document.getElementById(id).value = defT);
+  ['tm-display','tc-display'].forEach(id => document.getElementById(id).textContent = defT);
+  document.querySelectorAll('#addons-grid input[type=checkbox]').forEach(cb => {
+    cb.checked = false;
+    cb.closest('.fc-addon-item').classList.remove('checked');
+  });
+  document.getElementById('f_paid').selectedIndex = 0;
+  const dueEl = document.getElementById('f_due');
+  dueEl.disabled = false;
+  dueEl.title = '';
+  const dueLockHint = document.getElementById('due-lock-hint');
+  if (dueLockHint) dueLockHint.style.display = 'none';
+  calcTotal();
+}
+
+// ── 預約 ──
+function fetchBookedSlots() {
+  const dp = document.getElementById('bookDate');
+  currentBookDate = dp.value;
+  const msg = document.getElementById('bookLoadMsg');
+  const grid = document.getElementById('slotsGrid');
+  grid.innerHTML = ''; msg.textContent = '讀取中...';
+  fetch(getBookUrl() + '?date=' + currentBookDate)
+    .then(r => r.json())
+    .then(booked => {
+      msg.textContent = '';
+      currentBookedSlots = Array.isArray(booked) ? booked : [];
+      renderSlots(currentBookedSlots);
+    })
+    .catch(() => { msg.textContent = ''; currentBookedSlots = []; renderSlots([]); });
+}
+
+function renderSlots(booked) {
+  const grid   = document.getElementById('slotsGrid');
+  const slotCfg = JSON.parse(localStorage.getItem('mst_slots') || '{}');
+  const start  = parseInt(localStorage.getItem('mst_slot_start') || '10');
+  const end    = parseInt(localStorage.getItem('mst_slot_end')   || '22');
+  let total = 0, bookedCount = 0;
+  grid.innerHTML = '';
+  for (let h = start; h < end; h++) {
+    ['00','30'].forEach(m => {
+      const time = String(h).padStart(2,'0') + ':' + m;
+      const cfg  = slotCfg[time] !== undefined ? slotCfg[time] : {open: true, cap: 1};
+      if (!cfg.open) return; // 未開放的時段不顯示
+      total++;
+      const bookedCount_this = booked.filter(t => t === time).length;
+      const isFull = bookedCount_this >= cfg.cap;
+      const btn = document.createElement('button');
+      btn.className = 'slot' + (isFull ? ' booked' : '');
+      btn.disabled  = isFull;
+      btn.textContent = isFull ? time + ' (滿)' : time;
+      if (!isFull) btn.addEventListener('click', () => openModal(time));
+      else bookedCount++;
+      grid.appendChild(btn);
+    });
+  }
+  document.getElementById('stat-selected').textContent = bookedCount;
+  document.getElementById('stat-avail').textContent    = total - bookedCount;
+  document.getElementById('stat-today').textContent    = '—';
+}
+
+function openModal(time) {
+  currentBookTime = time;
+  document.getElementById('modalTitle').textContent = '預約時段：' + currentBookDate + ' ' + time;
+  document.getElementById('m_name').value  = '';
+  document.getElementById('m_phone').value = '';
+  if (document.getElementById('m_racket_count')) document.getElementById('m_racket_count').value = '1';
+  document.getElementById('bookStatus').textContent = '';
+  document.getElementById('bookStatus').className   = 'status-line';
+  document.getElementById('bookModal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('bookModal').classList.remove('open');
+}
+
+function getSlotConfig(time) {
+  const slotCfg = JSON.parse(localStorage.getItem('mst_slots') || '{}');
+  return slotCfg[time] !== undefined ? slotCfg[time] : {open: true, cap: 1};
+}
+
+function isWithinBusinessHours(time) {
+  const start = parseInt(localStorage.getItem('mst_slot_start') || '10');
+  const end   = parseInt(localStorage.getItem('mst_slot_end')   || '22');
+  const h = parseInt(time.split(':')[0]);
+  return h >= start && h < end;
+}
+
+// 檢查一組連續時段是否每一段都還有空位（避免多支球拍佔用到已額滿的時段）
+function validateBookingSlots(slots) {
+  for (const t of slots) {
+    if (!isWithinBusinessHours(t)) return false;
+    const cfg = getSlotConfig(t);
+    if (!cfg.open) return false;
+    const bookedCount = currentBookedSlots.filter(x => x === t).length;
+    if (bookedCount >= cfg.cap) return false;
+  }
+  return true;
+}
+
+function confirmBooking(goToString) {
+  const name   = document.getElementById('m_name').value.trim();
+  const phone  = document.getElementById('m_phone').value.trim();
+  const count  = document.getElementById('m_racket_count').value;
+  const status = document.getElementById('bookStatus');
+  if (!name || !phone) { alert('請填寫姓名與電話'); return; }
+
+  // 從選項解析球拍數量（取數字）
+  const numMatch = count.match(/(\d+)/);
+  const numRackets = numMatch ? parseInt(numMatch[1]) : 1;
+
+  // 計算需要佔用的連續時段
+  const slots = calcBookingSlots(currentBookTime, numRackets);
+
+  // 驗證每個需要的連續時段是否都還有空位（避免多支球拍佔用到已額滿的時段）
+  if (!validateBookingSlots(slots)) {
+    alert('選擇的時段需要連續 ' + slots.length + ' 個時段（' + slots.join('、') + '），但其中有時段已被預約額滿或不在開放時間內，請重新選擇時段。');
+    closeModal();
+    fetchBookedSlots();
+    return;
+  }
+
+  status.className = 'status-line loading';
+  status.innerHTML = '<span class="spinner"></span>&nbsp;寫入中...';
+
+  // 每個時段各送一筆
+  slots.forEach(slot => {
+    fetch(getBookUrl(), {
+      method: 'POST', mode: 'no-cors',
+      headers: {'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({
+        type: 'booking',
+        timestamp: new Date().toLocaleString('zh-TW'),
+        date: currentBookDate,
+        time: slot,
+        name, phone,
+        note: count + '（共 ' + slots.length + ' 時段）'
+      })
+    }).catch(() => {});
+  });
+
+  status.className = 'status-line success';
+  status.textContent = '✅ 已預約 ' + slots.join('、') + '！';
+
+  setTimeout(() => {
+    closeModal();
+    if (goToString) {
+      showStep('step3');
+    } else {
+      showStep('step1');
+    }
+  }, 900);
+}
+
+// 計算從 startTime 開始連續 n 個 30 分鐘時段
+function calcBookingSlots(startTime, n) {
+  const slots = [];
+  const [h, m] = startTime.split(':').map(Number);
+  let totalMins = h * 60 + m;
+  for (let i = 0; i < n; i++) {
+    const hh = String(Math.floor(totalMins / 60)).padStart(2, '0');
+    const mm = String(totalMins % 60).padStart(2, '0');
+    slots.push(hh + ':' + mm);
+    totalMins += 30;
+  }
+  return slots;
+}
+
+// ── Debug ──
+function showDebugPanel(rows) {
+  const panel = document.getElementById('debugPanel');
+  const out   = document.getElementById('debugOutput');
+  panel.style.display = 'block';
+  panel.scrollIntoView({behavior:'smooth',block:'start'});
+  const FIELDS = ['姓名','直線名稱','橫線名稱','直線磅數','橫線磅數','單位','Knot','穿線師','日期','備註','直線預拉','橫線預拉','電話','球拍型號','畫Logo','加購項目','小計','取件時間','付款方式','付款狀態','訂單總計'];
+  out.innerHTML = rows.map((row,i) => {
+    const trs = FIELDS.map(k => {
+      const v = row[k] ?? '';
+      return `<tr style="border-bottom:1px solid #1e293b;"><td style="padding:4px 8px;color:#64748b;font-size:0.75rem;">${k}</td><td style="padding:4px 8px;font-size:0.82rem;color:${v===''?'#475569':'#e2e8f0'};font-style:${v===''?'italic':'normal'}">${v===''?'（空）':v}</td></tr>`;
+    }).join('');
+    return `<div style="margin-bottom:16px;"><div style="background:#1e3a5f;border-left:3px solid #0ea5e9;padding:7px 12px;font-weight:700;font-size:0.88rem;">第 ${i+1} 筆</div><table style="width:100%;border-collapse:collapse;background:#0f172a;">${trs}</table></div>`;
+  }).join('');
+  document.getElementById('debugRaw').textContent = JSON.stringify(rows, null, 2);
+}
+
+// ── 設定 ──
+function saveSettings() {
+  const ou = document.getElementById('set_orderUrl').value.trim();
+  const bu = document.getElementById('set_bookUrl').value.trim();
+  if (ou) localStorage.setItem('mst_orderUrl', ou);
+  if (bu) localStorage.setItem('mst_bookUrl', bu);
+  const s = document.getElementById('settingsStatus');
+  s.className = 'status-line success'; s.textContent = '✅ 已儲存';
+  setTimeout(() => s.textContent = '', 2500);
+}
+
+// ── 工具 ──
+function addDays(d, n){ const r = new Date(d); r.setDate(r.getDate()+n); return r; }
+function toDateStr(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+// ── 初始化 ──
+function initApp() {
+  // 導航
+  // Step1 → 先顯示規則視窗
+  document.getElementById('choice-stringing').addEventListener('click', () => {
+    document.getElementById('bookingRulesModal').classList.add('open');
+  });
+  document.getElementById('bookingRulesCancel').addEventListener('click', () => {
+    document.getElementById('bookingRulesModal').classList.remove('open');
+  });
+  document.getElementById('bookingRulesOk').addEventListener('click', () => {
+    document.getElementById('bookingRulesModal').classList.remove('open');
+    prevStep = 'step1';
+    showStep('step2');
+    applyBookingRules();
+  });
+
+  // Step1 → 急件 Modal
+  document.getElementById('choice-urgent').addEventListener('click', () => {
+    document.getElementById('urgentModal').classList.add('open');
+  });
+
+  // 急件 Modal 關閉
+  document.getElementById('closeUrgentBtn').addEventListener('click', () => {
+    document.getElementById('urgentModal').classList.remove('open');
+  });
+
+  // 急件選項點選
+  document.querySelectorAll('.urgent-option').forEach(opt => {
+    opt.addEventListener('click', function() {
+      const fee   = this.dataset.fee;
+      const label = this.dataset.label;
+      const hours = parseInt(fee) === 300 ? 1 : parseInt(fee) === 200 ? 3 : 12;
+
+      // 關閉選擇 Modal，開確認 Modal
+      document.getElementById('urgentModal').classList.remove('open');
+
+      // 更新確認 Modal 標題
+      document.getElementById('urgentConfirmTitle').textContent =
+        parseInt(fee) === 100 ? '隔日取件' : '當日取件';
+      document.getElementById('urgentConfirmSub').textContent = label;
+      document.getElementById('urgentConfirmFee').textContent = '＋NT$' + fee;
+
+      // 產生收拍時間格子（10:00–22:00，每30分鐘）
+      // 過濾掉「已來不及」的時段
+      const grid = document.getElementById('urgentTimeGrid');
+      grid.innerHTML = '';
+      const now = new Date();
+      const nowMins = now.getHours() * 60 + now.getMinutes();
+      const shopOpen = 10 * 60;   // 10:00
+      const shopClose = 22 * 60;  // 22:00
+
+      for (let h = 10; h < 22; h++) {
+        for (const m of [0, 30]) {
+          const slotMins = h * 60 + m;
+          const shopOpen  = 10 * 60;
+          const shopClose = 22 * 60;
+          const pickupMins = slotMins + hours * 60;
+
+          let isPast = slotMins <= nowMins;
+          let pickupStr = '';
+          let pickupRaw = '';
+
+          if (hours === 1) {
+            // 1小時急件：取件必須在22:00前
+            if (pickupMins > shopClose) isPast = true;
+            const pH = Math.floor(pickupMins / 60);
+            const pM = pickupMins % 60;
+            pickupStr = String(pH).padStart(2,'0') + ':' + String(pM).padStart(2,'0');
+            pickupRaw = pickupStr;
+
+          } else if (hours === 3) {
+            // 3小時急件：
+            // 19:00前 → 正常+3h當日取件
+            // 19:00後 → 超過22:00的分鐘數，從隔日10:00往後推
+            if (pickupMins <= shopClose) {
+              const pH = Math.floor(pickupMins / 60);
+              const pM = pickupMins % 60;
+              pickupStr = String(pH).padStart(2,'0') + ':' + String(pM).padStart(2,'0');
+              pickupRaw = pickupStr;
+            } else {
+              const overMins = pickupMins - shopClose;
+              const nextPickup = shopOpen + overMins;
+              const pH = Math.floor(nextPickup / 60);
+              const pM = nextPickup % 60;
+              pickupStr = '隔日 ' + String(pH).padStart(2,'0') + ':' + String(pM).padStart(2,'0');
+              pickupRaw = String(pH).padStart(2,'0') + ':' + String(pM).padStart(2,'0');
+            }
+
+          } else {
+            // 12小時急件：
+            // 計算到22:00前還剩多少時間，剩餘時間從隔日10:00起算
+            const remainBeforeClose = shopClose - slotMins; // 收拍到22:00剩幾分鐘
+            const remainAfterOpen   = (hours * 60) - remainBeforeClose; // 從隔日10:00還需要幾分鐘
+            const nextPickup = shopOpen + remainAfterOpen;
+            const pH = Math.floor(nextPickup / 60);
+            const pM = nextPickup % 60;
+            pickupStr = '隔日 ' + String(pH).padStart(2,'0') + ':' + String(pM).padStart(2,'0');
+            pickupRaw = String(pH).padStart(2,'0') + ':' + String(pM).padStart(2,'0');
+          }
+
+          const timeStr = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'urgent-time-btn' + (isPast ? ' past' : '');
+          btn.disabled = isPast;
+          btn.innerHTML = `<div style="font-size:0.95rem;">${timeStr} 收</div><div style="font-size:0.72rem;color:${isPast?'#475569':'#f59e0b'};margin-top:2px;">→ ${pickupStr} 取</div>`;
+
+          if (!isPast) {
+            btn.addEventListener('click', () => {
+              window._urgentFee     = fee;
+              window._urgentLabel   = label;
+              window._urgentPickup  = pickupRaw;
+              window._urgentDropoff = timeStr;
+
+              document.getElementById('urgentConfirmModal').classList.remove('open');
+
+              // 跳到球拍選擇
+              prevStep = 'step1';
+              showStep('step3');
+            });
+          }
+          grid.appendChild(btn);
+        }
+      }
+
+      document.getElementById('urgentConfirmModal').classList.add('open');
+    });
+  });
+
+  // 急件確認 Modal 關閉
+  document.getElementById('urgentConfirmClose').addEventListener('click', () => {
+    document.getElementById('urgentConfirmModal').classList.remove('open');
+    document.getElementById('urgentModal').classList.add('open');
+  });
+
+  // Step2：略過時段直接到 Step3
+  document.getElementById('skip-booking-btn').addEventListener('click', () => {
+    prevStep = 'step2';
+    showStep('step3');
+  });
+
+  // Step3：選球拍 → Step4
+  document.getElementById('choice-badminton').addEventListener('click', () => {
+    document.getElementById('step4-title').innerHTML = '🏸 <span>羽球</span> 穿線單填寫';
+    prevStep = 'step3'; showStep('step4'); initForm('badminton');
+  });
+  document.getElementById('choice-tennis').addEventListener('click', () => {
+    document.getElementById('step4-title').innerHTML = '🎾 <span>網球</span> 穿線單填寫';
+    prevStep = 'step3'; showStep('step4'); initForm('tennis');
+  });
+
+  // 返回按鈕
+  document.getElementById('back-s2').addEventListener('click', () => showStep('step1'));
+  document.getElementById('back-s3').addEventListener('click', () => showStep('step2'));
+  document.getElementById('back-s4').addEventListener('click', () => showStep('step3'));
+  document.getElementById('back-settings').addEventListener('click', () => showStep(prevStep));
+  document.getElementById('nav-settings').addEventListener('click', () => {
+    const cur = document.querySelector('.step-wrap.active');
+    if (cur) prevStep = cur.id;
+    showStep('step-settings');
+  });
+
+  // 穿線表單事件
+  document.getElementById('f_bos').addEventListener('change', function(){
+    if (this.checked) {
+      document.getElementById('f_bos_gut').checked = false;
+      document.getElementById('f_hybrid').checked = false;
+      updateHybridUI();
+    }
+    const anyBos = this.checked || document.getElementById('f_bos_gut').checked;
+    document.getElementById('string-wrap').style.display = anyBos ? 'none' : '';
+    calcTotal();
+  });
+  document.getElementById('f_bos_gut').addEventListener('change', function(){
+    if (this.checked) {
+      document.getElementById('f_bos').checked = false;
+      document.getElementById('f_hybrid').checked = false;
+      updateHybridUI();
+    }
+    const anyBos = this.checked || document.getElementById('f_bos').checked;
+    document.getElementById('string-wrap').style.display = anyBos ? 'none' : '';
+    calcTotal();
+  });
+  document.getElementById('f_hybrid').addEventListener('change', function(){
+    if (this.checked) {
+      document.getElementById('f_bos').checked = false;
+      document.getElementById('f_bos_gut').checked = false;
+      document.getElementById('string-wrap').style.display = '';
+    }
+    updateHybridUI();
+    calcTotal();
+  });
+  document.getElementById('f_str_main').addEventListener('change', calcTotal);
+  document.getElementById('f_str_cross').addEventListener('change', calcTotal);
+  document.getElementById('f_str_main_display').addEventListener('click', () => openStringPicker('main'));
+  document.getElementById('f_str_cross_display').addEventListener('click', () => openStringPicker('cross'));
+  document.getElementById('stringPickClose').addEventListener('click', closeStringPicker);
+  document.getElementById('stringPickBack').addEventListener('click', () => { if (stringPickBackFn) stringPickBackFn(); });
+  document.getElementById('f_due').addEventListener('change', calcTotal);
+  document.getElementById('submitBtn').addEventListener('click', submitOrder);
+
+  // 結帳欄位設定
+  renderCheckoutFields();
+  document.getElementById('checkoutSettingsBtn').addEventListener('click', openCheckoutSettings);
+  document.getElementById('checkoutSettingsClose').addEventListener('click', closeCheckoutSettings);
+  document.getElementById('cs_payment_add').addEventListener('click', () => {
+    const input = document.getElementById('cs_payment_new');
+    const val = input.value.trim();
+    if (!val) return;
+    if (!checkoutSettings.paymentOptions.includes(val)) checkoutSettings.paymentOptions.push(val);
+    input.value = '';
+    renderCheckoutSettingsModal();
+  });
+  document.getElementById('cs_status_add').addEventListener('click', () => {
+    const input = document.getElementById('cs_status_new');
+    const val = input.value.trim();
+    if (!val) return;
+    if (!checkoutSettings.statusOptions.includes(val)) checkoutSettings.statusOptions.push(val);
+    input.value = '';
+    renderCheckoutSettingsModal();
+  });
+  document.getElementById('cs_payment_new').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); document.getElementById('cs_payment_add').click(); }
+  });
+  document.getElementById('cs_status_new').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); document.getElementById('cs_status_add').click(); }
+  });
+  document.getElementById('cs_save').addEventListener('click', () => {
+    checkoutSettings.paymentEnabled = document.getElementById('cs_payment_enabled').checked;
+    checkoutSettings.statusEnabled  = document.getElementById('cs_status_enabled').checked;
+    saveCheckoutSettingsToStorage();
+    renderCheckoutFields();
+    closeCheckoutSettings();
+  });
+
+  // 客製化需求折疊
+  document.getElementById('custom-toggle-btn').addEventListener('click', function() {
+    const section = document.getElementById('custom-section');
+    const icon    = document.getElementById('custom-toggle-icon');
+    const isOpen  = section.style.display !== 'none';
+    section.style.display = isOpen ? 'none' : 'block';
+    icon.textContent = isOpen ? '＋' : '－';
+    this.style.borderStyle = isOpen ? 'dashed' : 'solid';
+    this.style.background  = isOpen ? 'transparent' : '#f0f4ff';
+  });
+
+  // 張力按鈕
+  function bindTension(minusId, plusId, inputId, displayId) {
+    document.getElementById(minusId).addEventListener('click', () => {
+      const inp = document.getElementById(inputId);
+      const min = currentSport === 'tennis' ? 35 : 12;
+      const v = Math.max(min, (parseInt(inp.value) || (currentSport === 'tennis' ? 48 : 24)) - 1);
+      inp.value = v; document.getElementById(displayId).textContent = v;
+    });
+    document.getElementById(plusId).addEventListener('click', () => {
+      const inp = document.getElementById(inputId);
+      const max = currentSport === 'tennis' ? 65 : 35;
+      const v = Math.min(max, (parseInt(inp.value) || (currentSport === 'tennis' ? 48 : 24)) + 1);
+      inp.value = v; document.getElementById(displayId).textContent = v;
+    });
+  }
+  bindTension('tm-minus','tm-plus','f_tm','tm-display');
+  bindTension('tc-minus','tc-plus','f_tc','tc-display');
+
+  // 單位切換
+  document.getElementById('unit-lbs').addEventListener('click', () => {
+    document.getElementById('f_unit').value = 'lbs';
+    document.getElementById('unit-lbs').className = 'fc-unit-btn active';
+    document.getElementById('unit-kg').className  = 'fc-unit-btn';
+    document.getElementById('tm-unit').textContent = 'lbs';
+    document.getElementById('tc-unit').textContent = 'lbs';
+  });
+  document.getElementById('unit-kg').addEventListener('click', () => {
+    document.getElementById('f_unit').value = 'kg';
+    document.getElementById('unit-lbs').className = 'fc-unit-btn';
+    document.getElementById('unit-kg').className  = 'fc-unit-btn active';
+    document.getElementById('tm-unit').textContent = 'kg';
+    document.getElementById('tc-unit').textContent = 'kg';
+  });
+
+  // 預約
+  document.getElementById('bookDate').addEventListener('change', fetchBookedSlots);
+  document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+  document.getElementById('confirmBookAndString').addEventListener('click', () => confirmBooking(true));
+  document.getElementById('confirmBookDone').addEventListener('click', () => confirmBooking(false));
+  document.getElementById('m_racket_count').addEventListener('change', function () {
+    const status = document.getElementById('bookStatus');
+    const numMatch = this.value.match(/(\d+)/);
+    const numRackets = numMatch ? parseInt(numMatch[1]) : 1;
+    const slots = calcBookingSlots(currentBookTime, numRackets);
+    if (!validateBookingSlots(slots)) {
+      status.className = 'status-line error';
+      status.textContent = '⚠️ 此數量需要連續時段 ' + slots.join('、') + '，其中有時段已額滿，請減少數量或改選時段';
+    } else {
+      status.textContent = '';
+      status.className = 'status-line';
+    }
+  });
+
+  // ── 時段管理後台 ──
+  function buildSlotManagerGrid() {
+    const start = parseInt(document.getElementById('slot-start').value);
+    const end   = parseInt(document.getElementById('slot-end').value);
+    const cap   = parseInt(document.getElementById('slot-default-cap').value) || 1;
+    const saved = JSON.parse(localStorage.getItem('mst_slots') || '{}');
+    const grid  = document.getElementById('slot-manager-grid');
+    grid.innerHTML = '';
+    for (let h = start; h < end; h++) {
+      ['00','30'].forEach(m => {
+        const time = String(h).padStart(2,'0') + ':' + m;
+        const cfg  = saved[time] !== undefined ? saved[time] : {open: true, cap};
+        const cell = document.createElement('div');
+        cell.style.cssText = 'background:var(--dark);border:1.5px solid var(--dark3);border-radius:8px;padding:8px 10px;display:flex;align-items:center;gap:8px;';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox'; cb.id = 'sc_' + time.replace(':','');
+        cb.dataset.time = time; cb.checked = cfg.open;
+        cb.style.cssText = 'width:15px;height:15px;accent-color:var(--primary);cursor:pointer;flex-shrink:0;';
+        const lbl = document.createElement('span');
+        lbl.style.cssText = 'font-size:0.85rem;font-weight:700;flex:1;';
+        lbl.textContent = time;
+        const capInp = document.createElement('input');
+        capInp.type = 'number'; capInp.id = 'sc_cap_' + time.replace(':','');
+        capInp.dataset.time = time; capInp.value = cfg.cap; capInp.min = 1; capInp.max = 20;
+        capInp.style.cssText = 'width:44px;padding:3px 6px;border-radius:5px;border:1px solid var(--dark3);background:var(--dark2);color:var(--white);font-size:0.8rem;text-align:center;';
+        const unit = document.createElement('span');
+        unit.style.cssText = 'font-size:0.7rem;color:var(--mid);'; unit.textContent = '組';
+        cell.appendChild(cb); cell.appendChild(lbl); cell.appendChild(capInp); cell.appendChild(unit);
+        grid.appendChild(cell);
+      });
+    }
+  }
+
+  function saveSlotSettings() {
+    const cells = document.querySelectorAll('#slot-manager-grid input[type=checkbox]');
+    const cfg = {};
+    cells.forEach(cb => {
+      const time = cb.dataset.time;
+      const capEl = document.getElementById('sc_cap_' + time.replace(':',''));
+      cfg[time] = { open: cb.checked, cap: parseInt(capEl?.value) || 1 };
+    });
+    localStorage.setItem('mst_slots', JSON.stringify(cfg));
+    localStorage.setItem('mst_slot_start', document.getElementById('slot-start').value);
+    localStorage.setItem('mst_slot_end',   document.getElementById('slot-end').value);
+    const s = document.getElementById('slotsSettingStatus');
+    s.className = 'status-line success'; s.textContent = '✅ 時段設定已儲存';
+    setTimeout(() => s.textContent = '', 2500);
+  }
+
+  const savedStart = localStorage.getItem('mst_slot_start');
+  const savedEnd   = localStorage.getItem('mst_slot_end');
+  const slotStartEl = document.getElementById('slot-start');
+  const slotEndEl   = document.getElementById('slot-end');
+  if (slotStartEl && savedStart) slotStartEl.value = savedStart;
+  if (slotEndEl   && savedEnd)   slotEndEl.value   = savedEnd;
+  if (slotStartEl) buildSlotManagerGrid();
+
+  document.getElementById('btn-rebuild-slots').addEventListener('click', buildSlotManagerGrid);
+  document.getElementById('btn-save-slots').addEventListener('click', saveSlotSettings);
+  document.getElementById('btn-select-all').addEventListener('click', () => {
+    document.querySelectorAll('#slot-manager-grid input[type=checkbox]').forEach(cb => cb.checked = true);
+  });
+  document.getElementById('btn-deselect-all').addEventListener('click', () => {
+    document.querySelectorAll('#slot-manager-grid input[type=checkbox]').forEach(cb => cb.checked = false);
+  });
+
+  // 設定
+  const oUrlEl = document.getElementById('set_orderUrl');
+  const bUrlEl = document.getElementById('set_bookUrl');
+  if (oUrlEl) oUrlEl.value = getOrderUrl();
+  if (bUrlEl) bUrlEl.value = getBookUrl();
+  document.getElementById('saveBtn')?.addEventListener('click', saveSettings);
+
+  // 預約規則
+  document.getElementById('btn-save-rules')?.addEventListener('click', () => {
+    const minDays = document.getElementById('rule-min-days').value;
+    const maxDays = document.getElementById('rule-max-days').value;
+    const urgent  = document.querySelector('input[name="rule-urgent"]:checked')?.value || 'no';
+    localStorage.setItem('mst_rule_min_days', minDays);
+    localStorage.setItem('mst_rule_max_days', maxDays);
+    localStorage.setItem('mst_rule_urgent', urgent);
+    const s = document.getElementById('rulesStatus');
+    s.className = 'status-line success'; s.textContent = '✅ 規則已儲存';
+    setTimeout(() => s.textContent = '', 2500);
+    applyBookingRules();
+  });
+
+  // 載入已儲存規則到後台 UI
+  const savedMinDays = localStorage.getItem('mst_rule_min_days');
+  const savedMaxDays = localStorage.getItem('mst_rule_max_days');
+  const savedUrgent  = localStorage.getItem('mst_rule_urgent');
+  if (savedMinDays && document.getElementById('rule-min-days')) document.getElementById('rule-min-days').value = savedMinDays;
+  if (savedMaxDays && document.getElementById('rule-max-days')) document.getElementById('rule-max-days').value = savedMaxDays;
+  if (savedUrgent === 'yes' && document.getElementById('rule-urgent-yes')) document.getElementById('rule-urgent-yes').checked = true;
+
+  // Debug
+  document.getElementById('copyJsonBtn').addEventListener('click', () => {
+    navigator.clipboard.writeText(document.getElementById('debugRaw').textContent).then(() => {
+      document.getElementById('copyJsonBtn').textContent = '✅ 已複製';
+      setTimeout(() => document.getElementById('copyJsonBtn').textContent = '📋 複製', 1500);
+    });
+  });
+  document.getElementById('closeDebugBtn').addEventListener('click', () => {
+    document.getElementById('debugPanel').style.display = 'none';
+  });
+
+  // 預約日期套用規則
+  applyBookingRules();
+
+  showStep('step1');
+}
+
+function applyBookingRules() {
+  const minDays = parseInt(localStorage.getItem('mst_rule_min_days') ?? '3');
+  const maxDays = parseInt(localStorage.getItem('mst_rule_max_days') ?? '14');
+  const dp = document.getElementById('bookDate');
+  if (!dp) return;
+  const minDate = addDays(new Date(), minDays);
+  const maxDate = addDays(new Date(), maxDays);
+  dp.min   = toDateStr(minDate);
+  dp.max   = toDateStr(maxDate);
+  dp.value = toDateStr(minDate);
+  currentBookDate = dp.value;
+  fetchBookedSlots();
+}
+
+function applyUrgentRule() {
+  const urgent = localStorage.getItem('mst_rule_urgent') || 'no';
+  const dueEl = document.getElementById('f_due');
+  if (!dueEl) return;
+  Array.from(dueEl.options).forEach(opt => {
+    if (opt.value.includes('小時')) {
+      opt.style.display = urgent === 'yes' ? '' : 'none';
+    }
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
+</script>
+</body>
+</html>

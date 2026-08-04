@@ -782,6 +782,26 @@ const DEFAULT_BOOK_URL  = 'https://script.google.com/macros/s/AKfycbylu3RHQeinWl
 function getOrderUrl(){ return localStorage.getItem('mst_orderUrl') || DEFAULT_ORDER_URL; }
 function getBookUrl() { return localStorage.getItem('mst_bookUrl')  || DEFAULT_BOOK_URL;  }
 
+// ── 共用系統設定（時段管理／預約規則）：從後端讀取，避免每台裝置各自為政 ──
+let remoteSettingsLoaded = false;
+
+function applyRemoteSettings(settings) {
+  if (!settings || typeof settings !== 'object') return;
+  if (settings.slots !== undefined)         localStorage.setItem('mst_slots', JSON.stringify(settings.slots));
+  if (settings.slot_start !== undefined)    localStorage.setItem('mst_slot_start', String(settings.slot_start));
+  if (settings.slot_end !== undefined)      localStorage.setItem('mst_slot_end', String(settings.slot_end));
+  if (settings.rule_min_days !== undefined) localStorage.setItem('mst_rule_min_days', String(settings.rule_min_days));
+  if (settings.rule_max_days !== undefined) localStorage.setItem('mst_rule_max_days', String(settings.rule_max_days));
+  if (settings.rule_urgent !== undefined)   localStorage.setItem('mst_rule_urgent', settings.rule_urgent);
+}
+
+function fetchRemoteSettings() {
+  return fetch(getBookUrl() + '?type=settings')
+    .then(r => r.json())
+    .then(settings => { applyRemoteSettings(settings); remoteSettingsLoaded = true; })
+    .catch(() => { remoteSettingsLoaded = true; });
+}
+
 let currentSport = 'badminton';
 let currentBookDate = '';
 let currentBookTime = '';
@@ -1339,6 +1359,9 @@ function toDateStr(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStar
 
 // ── 初始化 ──
 function initApp() {
+  // 頁面載入時先向後端拉取最新的共用設定（時段管理／預約規則）
+  fetchRemoteSettings();
+
   // 導航
   // Step1 → 先顯示規則視窗
   document.getElementById('choice-stringing').addEventListener('click', () => {
@@ -1351,7 +1374,8 @@ function initApp() {
     document.getElementById('bookingRulesModal').classList.remove('open');
     prevStep = 'step1';
     showStep('step2');
-    applyBookingRules();
+    // 確保套用的是最新的時段／預約規則設定，而不是這台裝置上可能過期的快取
+    fetchRemoteSettings().then(applyBookingRules);
   });
 
   // Step1 → 急件 Modal

@@ -914,6 +914,51 @@ const DEFAULT_BOOK_URL  = 'https://script.google.com/macros/s/AKfycbylu3RHQeinWl
 function getOrderUrl(){ return localStorage.getItem('mst_orderUrl') || DEFAULT_ORDER_URL; }
 function getBookUrl() { return localStorage.getItem('mst_bookUrl')  || DEFAULT_BOOK_URL;  }
 
+// ── 共用系統設定（時段管理／預約規則／結帳欄位設定）：同步到後端，讓所有裝置（含客人手機）讀到同一份 ──
+let remoteSettingsLoaded = false;
+
+function applyRemoteSettings(settings) {
+  if (!settings || typeof settings !== 'object') return;
+  if (settings.slots !== undefined)         localStorage.setItem('mst_slots', JSON.stringify(settings.slots));
+  if (settings.slot_start !== undefined)    localStorage.setItem('mst_slot_start', String(settings.slot_start));
+  if (settings.slot_end !== undefined)      localStorage.setItem('mst_slot_end', String(settings.slot_end));
+  if (settings.rule_min_days !== undefined) localStorage.setItem('mst_rule_min_days', String(settings.rule_min_days));
+  if (settings.rule_max_days !== undefined) localStorage.setItem('mst_rule_max_days', String(settings.rule_max_days));
+  if (settings.rule_urgent !== undefined)   localStorage.setItem('mst_rule_urgent', settings.rule_urgent);
+  if (settings.checkout !== undefined)      localStorage.setItem('mst_checkout_settings', JSON.stringify(settings.checkout));
+}
+
+function fetchRemoteSettings() {
+  return fetch(getBookUrl() + '?type=settings')
+    .then(r => r.json())
+    .then(settings => { applyRemoteSettings(settings); remoteSettingsLoaded = true; })
+    .catch(() => { remoteSettingsLoaded = true; });
+}
+
+function collectLocalSettingsForPush() {
+  let checkout = null;
+  try { checkout = JSON.parse(localStorage.getItem('mst_checkout_settings') || 'null'); } catch (e) { checkout = null; }
+  return {
+    slots: JSON.parse(localStorage.getItem('mst_slots') || '{}'),
+    slot_start: parseInt(localStorage.getItem('mst_slot_start') || '10'),
+    slot_end: parseInt(localStorage.getItem('mst_slot_end') || '22'),
+    rule_min_days: parseInt(localStorage.getItem('mst_rule_min_days') || '3'),
+    rule_max_days: parseInt(localStorage.getItem('mst_rule_max_days') || '14'),
+    rule_urgent: localStorage.getItem('mst_rule_urgent') || 'no',
+    checkout: checkout
+  };
+}
+
+// 把目前這台裝置上的完整設定推送到後端，讓客人手機／其他裝置都能讀到最新設定
+function pushRemoteSettings() {
+  const settings = collectLocalSettingsForPush();
+  fetch(getBookUrl(), {
+    method: 'POST', mode: 'no-cors',
+    headers: {'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({ type: 'settings', settings })
+  }).catch(() => {});
+}
+
 let currentSport = 'badminton';
 let currentBookDate = '';
 let currentBookTime = '';
@@ -1574,6 +1619,13 @@ function toDateStr(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStar
 
 // ── 初始化 ──
 function initApp() {
+  // 頁面載入時先向後端拉取最新的共用設定（時段管理／預約規則／結帳欄位設定）
+  fetchRemoteSettings().then(() => {
+    // checkoutSettings 是頁面載入當下就讀進來的變數，設定同步完成後要重新讀取一次並套用畫面
+    checkoutSettings = loadCheckoutSettings();
+    renderCheckoutFields();
+  });
+
   // 導航
   // Step1 → 先顯示規則視窗
   document.getElementById('choice-stringing').addEventListener('click', () => {
@@ -1586,7 +1638,7 @@ function initApp() {
     document.getElementById('bookingRulesModal').classList.remove('open');
     prevStep = 'step1';
     showStep('step2');
-    applyBookingRules();
+    fetchRemoteSettings().then(applyBookingRules);
   });
 
   // Step1 → 急件 Modal
@@ -1805,6 +1857,7 @@ function initApp() {
     checkoutSettings.paymentEnabled = document.getElementById('cs_payment_enabled').checked;
     checkoutSettings.statusEnabled  = document.getElementById('cs_status_enabled').checked;
     saveCheckoutSettingsToStorage();
+    pushRemoteSettings();
     renderCheckoutFields();
     closeCheckoutSettings();
   });
@@ -1917,8 +1970,9 @@ function initApp() {
     localStorage.setItem('mst_slots', JSON.stringify(cfg));
     localStorage.setItem('mst_slot_start', document.getElementById('slot-start').value);
     localStorage.setItem('mst_slot_end',   document.getElementById('slot-end').value);
+    pushRemoteSettings();
     const s = document.getElementById('slotsSettingStatus');
-    s.className = 'status-line success'; s.textContent = '✅ 時段設定已儲存';
+    s.className = 'status-line success'; s.textContent = '✅ 時段設定已儲存（已同步給所有裝置）';
     setTimeout(() => s.textContent = '', 2500);
   }
 
@@ -1954,8 +2008,9 @@ function initApp() {
     localStorage.setItem('mst_rule_min_days', minDays);
     localStorage.setItem('mst_rule_max_days', maxDays);
     localStorage.setItem('mst_rule_urgent', urgent);
+    pushRemoteSettings();
     const s = document.getElementById('rulesStatus');
-    s.className = 'status-line success'; s.textContent = '✅ 規則已儲存';
+    s.className = 'status-line success'; s.textContent = '✅ 規則已儲存（已同步給所有裝置）';
     setTimeout(() => s.textContent = '', 2500);
     applyBookingRules();
   });

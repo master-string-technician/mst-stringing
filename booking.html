@@ -1247,6 +1247,18 @@ function confirmBooking(goToString) {
   const status = document.getElementById('bookStatus');
   if (!name || !phone) { alert('請填寫姓名與電話'); return; }
 
+  // 再次確認日期沒有超出預約規則範圍（避免瀏覽器沒確實擋下手動選取的日期）
+  const minDays = parseInt(localStorage.getItem('mst_rule_min_days') ?? '3');
+  const maxDays = parseInt(localStorage.getItem('mst_rule_max_days') ?? '14');
+  const minStr = toDateStr(addDays(new Date(), minDays));
+  const maxStr = toDateStr(addDays(new Date(), maxDays));
+  if (currentBookDate < minStr || currentBookDate > maxStr) {
+    alert('此日期不在可預約範圍內（' + minStr + ' ～ ' + maxStr + '），請重新選擇日期。');
+    closeModal();
+    validateBookDateSelection();
+    return;
+  }
+
   // 從選項解析球拍數量（取數字）
   const numMatch = count.match(/(\d+)/);
   const numRackets = numMatch ? parseInt(numMatch[1]) : 1;
@@ -1610,7 +1622,7 @@ function initApp() {
   });
 
   // 預約
-  document.getElementById('bookDate').addEventListener('change', fetchBookedSlots);
+  document.getElementById('bookDate').addEventListener('change', validateBookDateSelection);
   document.getElementById('closeModalBtn').addEventListener('click', closeModal);
   document.getElementById('bookingReceiptClose').addEventListener('click', () => {
     document.getElementById('bookingReceiptModal').classList.remove('open');
@@ -1671,6 +1683,25 @@ function applyBookingRules() {
   dp.min   = toDateStr(minDate);
   dp.max   = toDateStr(maxDate);
   dp.value = toDateStr(minDate);
+  currentBookDate = dp.value;
+  fetchBookedSlots();
+}
+
+// 部分瀏覽器（尤其是內嵌瀏覽器 / 舊版行動裝置）不會確實擋掉超出 min/max 的手動選取，
+// 所以除了 <input type=date> 本身的 min/max，另外用 JS 再驗證一次
+function validateBookDateSelection() {
+  const dp = document.getElementById('bookDate');
+  const minDays = parseInt(localStorage.getItem('mst_rule_min_days') ?? '3');
+  const maxDays = parseInt(localStorage.getItem('mst_rule_max_days') ?? '14');
+  const minStr = toDateStr(addDays(new Date(), minDays));
+  const maxStr = toDateStr(addDays(new Date(), maxDays));
+  if (dp.value < minStr) {
+    alert('最早可預約日期為 ' + minStr + '（需提前 ' + minDays + ' 天預約），已自動調整。');
+    dp.value = minStr;
+  } else if (dp.value > maxStr) {
+    alert('最多只能預約到 ' + maxStr + '（' + maxDays + ' 天內），已自動調整。');
+    dp.value = maxStr;
+  }
   currentBookDate = dp.value;
   fetchBookedSlots();
 }

@@ -683,6 +683,25 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--dark);color:var(--wh
     <button class="btn-save" id="btn-save-rules">💾 儲存預約規則</button>
     <div id="rulesStatus" class="status-line"></div>
   </div>
+
+  <!-- 線材價格管理 -->
+  <div class="settings-card">
+    <h3>🎾 球線價格管理</h3>
+    <p style="font-size:0.82rem;color:var(--mid);margin-bottom:14px;">修改各款球線的價格，客戶端與店家端會同步更新。</p>
+
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <button type="button" class="btn-save" id="sp-tab-tennis" style="flex:1;margin-top:0;">🎾 網球線</button>
+      <button type="button" class="btn-save" id="sp-tab-badminton" style="flex:1;margin-top:0;background:var(--dark3);">🏸 羽球線</button>
+    </div>
+
+    <div id="string-price-list" style="max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;padding-right:4px;"></div>
+
+    <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
+      <button class="btn-save" id="btn-save-string-prices">💾 儲存價格設定</button>
+      <button class="btn-save" id="btn-reset-string-prices" style="background:var(--dark3);">還原本頁預設值</button>
+    </div>
+    <div id="stringPriceStatus" class="status-line"></div>
+  </div>
     <h3>🔗 Google Apps Script 網址</h3>
     <div class="url-group"><label>穿線開單 Script URL</label><input type="text" id="set_orderUrl" placeholder="https://script.google.com/macros/s/..."></div>
     <div class="url-group"><label>預約系統 Script URL</label><input type="text" id="set_bookUrl" placeholder="https://script.google.com/macros/s/..."></div>
@@ -914,7 +933,23 @@ const DEFAULT_BOOK_URL  = 'https://script.google.com/macros/s/AKfycbylu3RHQeinWl
 function getOrderUrl(){ return localStorage.getItem('mst_orderUrl') || DEFAULT_ORDER_URL; }
 function getBookUrl() { return localStorage.getItem('mst_bookUrl')  || DEFAULT_BOOK_URL;  }
 
-// ── 共用系統設定（時段管理／預約規則／結帳欄位設定）：同步到後端，讓所有裝置（含客人手機）讀到同一份 ──
+// ── 線材價格管理：可從後台修改各款線的價格，覆蓋預設值 ──
+function loadStringPriceOverrides() {
+  try { return JSON.parse(localStorage.getItem('mst_string_prices') || '{}'); } catch (e) { return {}; }
+}
+
+let stringPriceOverrides = loadStringPriceOverrides();
+
+// 回傳套用「後台覆蓋價格」之後的線材清單，其他程式碼一律改用這個而不是直接讀 STRINGS
+function getEffectiveStrings(sport) {
+  return STRINGS[sport].map(item => {
+    const key = sport + '|' + item.name;
+    const price = stringPriceOverrides[key] !== undefined ? stringPriceOverrides[key] : item.price;
+    return Object.assign({}, item, { price });
+  });
+}
+
+// ── 共用系統設定（時段管理／預約規則／結帳欄位設定／線材價格）：同步到後端，讓所有裝置（含客人手機）讀到同一份 ──
 let remoteSettingsLoaded = false;
 
 function applyRemoteSettings(settings) {
@@ -926,6 +961,10 @@ function applyRemoteSettings(settings) {
   if (settings.rule_max_days !== undefined) localStorage.setItem('mst_rule_max_days', String(settings.rule_max_days));
   if (settings.rule_urgent !== undefined)   localStorage.setItem('mst_rule_urgent', settings.rule_urgent);
   if (settings.checkout !== undefined)      localStorage.setItem('mst_checkout_settings', JSON.stringify(settings.checkout));
+  if (settings.stringPrices !== undefined) {
+    localStorage.setItem('mst_string_prices', JSON.stringify(settings.stringPrices));
+    stringPriceOverrides = settings.stringPrices || {};
+  }
 }
 
 function fetchRemoteSettings() {
@@ -945,7 +984,8 @@ function collectLocalSettingsForPush() {
     rule_min_days: parseInt(localStorage.getItem('mst_rule_min_days') || '3'),
     rule_max_days: parseInt(localStorage.getItem('mst_rule_max_days') || '14'),
     rule_urgent: localStorage.getItem('mst_rule_urgent') || 'no',
-    checkout: checkout
+    checkout: checkout,
+    stringPrices: loadStringPriceOverrides()
   };
 }
 
@@ -979,7 +1019,7 @@ function initForm(sport) {
   ['f_str_main','f_str_cross'].forEach(id => {
     const sel = document.getElementById(id);
     sel.innerHTML = '<option value="">請選擇線材...</option>';
-    STRINGS[sport].forEach(s => {
+    getEffectiveStrings(sport).forEach(s => {
       const o = document.createElement('option');
       o.value = s.name;
       o.textContent = s.price > 0 ? s.name + '  NT$' + s.price : s.name;
@@ -1077,7 +1117,7 @@ const GAUGE_RANGES = [
 
 function getBrandGroups(sport) {
   const groups = [];
-  STRINGS[sport].forEach(item => {
+  getEffectiveStrings(sport).forEach(item => {
     const brand = item.brand || '其他';
     let g = groups.find(g => g.brand === brand);
     if (!g) { g = {brand, items:[]}; groups.push(g); }
@@ -1636,6 +1676,8 @@ function initApp() {
     // checkoutSettings 是頁面載入當下就讀進來的變數，設定同步完成後要重新讀取一次並套用畫面
     checkoutSettings = loadCheckoutSettings();
     renderCheckoutFields();
+    // 線材價格覆蓋值也是同步完成後才會是最新的，重新畫一次目前分頁
+    buildStringPriceList();
   });
 
   // 導航
@@ -2004,6 +2046,81 @@ function initApp() {
   document.getElementById('btn-deselect-all').addEventListener('click', () => {
     document.querySelectorAll('#slot-manager-grid input[type=checkbox]').forEach(cb => cb.checked = false);
   });
+
+  // ── 線材價格管理 ──
+  let stringPriceActiveSport = 'tennis';
+
+  function captureCurrentStringPriceInputs() {
+    document.querySelectorAll('#string-price-list input[type=number]').forEach(inp => {
+      const key = inp.dataset.sport + '|' + inp.dataset.name;
+      const val = parseInt(inp.value);
+      if (!isNaN(val) && val >= 0) stringPriceOverrides[key] = val;
+    });
+  }
+
+  function buildStringPriceList() {
+    const wrap = document.getElementById('string-price-list');
+    wrap.innerHTML = '';
+    getBrandGroups(stringPriceActiveSport).forEach(g => {
+      const section = document.createElement('div');
+      const heading = document.createElement('div');
+      heading.textContent = g.brand;
+      heading.style.cssText = 'font-weight:700;color:var(--primary);margin-bottom:6px;font-size:0.9rem;';
+      section.appendChild(heading);
+      const list = document.createElement('div');
+      list.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
+      g.items.forEach(item => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--dark3);border-radius:7px;';
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = item.name;
+        nameSpan.style.cssText = 'font-size:0.85rem;color:var(--white);';
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.min = '0';
+        input.value = item.price;
+        input.dataset.sport = stringPriceActiveSport;
+        input.dataset.name = item.name;
+        input.style.cssText = 'width:90px;padding:6px 8px;border-radius:6px;border:1px solid var(--dark3);background:var(--dark);color:var(--white);text-align:right;font-family:\'Noto Sans TC\',sans-serif;';
+        row.appendChild(nameSpan);
+        row.appendChild(input);
+        list.appendChild(row);
+      });
+      section.appendChild(list);
+      wrap.appendChild(section);
+    });
+  }
+
+  document.getElementById('sp-tab-tennis').addEventListener('click', () => {
+    captureCurrentStringPriceInputs();
+    stringPriceActiveSport = 'tennis';
+    document.getElementById('sp-tab-tennis').style.background = '';
+    document.getElementById('sp-tab-badminton').style.background = 'var(--dark3)';
+    buildStringPriceList();
+  });
+  document.getElementById('sp-tab-badminton').addEventListener('click', () => {
+    captureCurrentStringPriceInputs();
+    stringPriceActiveSport = 'badminton';
+    document.getElementById('sp-tab-badminton').style.background = '';
+    document.getElementById('sp-tab-tennis').style.background = 'var(--dark3)';
+    buildStringPriceList();
+  });
+  document.getElementById('btn-save-string-prices').addEventListener('click', () => {
+    captureCurrentStringPriceInputs();
+    localStorage.setItem('mst_string_prices', JSON.stringify(stringPriceOverrides));
+    pushRemoteSettings();
+    const s = document.getElementById('stringPriceStatus');
+    s.className = 'status-line success'; s.textContent = '✅ 價格已儲存（已同步給所有裝置）';
+    setTimeout(() => s.textContent = '', 2500);
+  });
+  document.getElementById('btn-reset-string-prices').addEventListener('click', () => {
+    if (!confirm('確定要把目前分頁顯示的線材價格全部還原成預設值嗎？（還需要再按「儲存價格設定」才會生效）')) return;
+    document.querySelectorAll('#string-price-list input[type=number]').forEach(inp => {
+      const defaultItem = STRINGS[stringPriceActiveSport].find(it => it.name === inp.dataset.name);
+      if (defaultItem) inp.value = defaultItem.price;
+    });
+  });
+  buildStringPriceList();
 
   // 設定
   const oUrlEl = document.getElementById('set_orderUrl');

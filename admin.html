@@ -1594,21 +1594,20 @@ function confirmBooking(goToString) {
   status.className = 'status-line loading';
   status.innerHTML = '<span class="spinner"></span>&nbsp;寫入中...';
 
-  // 每個時段各送一筆
-  slots.forEach(slot => {
-    fetch(getBookUrl(), {
-      method: 'POST', mode: 'no-cors',
-      headers: {'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify({
-        type: 'booking',
-        timestamp: new Date().toLocaleString('zh-TW'),
-        date: currentBookDate,
-        time: slot,
-        name, phone,
-        note: count + '（共 ' + slots.length + ' 時段）'
-      })
-    }).catch(() => {});
-  });
+  // 每個時段各送一筆，依序送出（不要同時併發），避免多筆同時寫入 Google Sheet 互相「撞車」導致資料遺失
+  const timestamp = new Date().toLocaleString('zh-TW');
+  slots.reduce((p, slot) => p.then(() => fetch(getBookUrl(), {
+    method: 'POST', mode: 'no-cors',
+    headers: {'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({
+      type: 'booking',
+      timestamp: timestamp,
+      date: currentBookDate,
+      time: slot,
+      name, phone,
+      note: count + '（共 ' + slots.length + ' 時段）'
+    })
+  }).catch(() => {})), Promise.resolve());
 
   status.className = 'status-line success';
   status.textContent = '✅ 已預約 ' + slots.join('、') + '！';

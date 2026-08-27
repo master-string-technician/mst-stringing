@@ -569,22 +569,15 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--dark);color:var(--wh
     <div class="form-card-hd">💳 結帳櫃檯</div>
     <div class="form-card-body">
       <div class="fc-checkout">
-        <div class="fc-row" style="margin-bottom:0;">
-          <div><label class="fc-label">付款方式</label>
-            <select class="fc-input" id="f_payment">
-              <option value="現金 (Cash)">現金 (Cash)</option>
-              <option value="Line Pay">Line Pay</option>
-              <option value="信用卡">信用卡</option>
-              <option value="轉帳">轉帳</option>
-            </select>
-          </div>
-          <div><label class="fc-label">付款狀態</label>
-            <select class="fc-input" id="f_paid">
-              <option value="未付款 (Unpaid)">❌ 未付款</option>
-              <option value="已付款 (Paid)">✅ 已付款</option>
-            </select>
-          </div>
+        <div><label class="fc-label">付款方式</label>
+          <select class="fc-input" id="f_payment">
+            <option value="現金 (Cash)">現金 (Cash)</option>
+            <option value="Line Pay">Line Pay</option>
+            <option value="信用卡">信用卡</option>
+            <option value="轉帳">轉帳</option>
+          </select>
         </div>
+        <p style="font-size:0.78rem;color:var(--mid);margin-top:8px;margin-bottom:0;">💡 目前僅提供現場取件付款，尚未開放線上付款</p>
       </div>
       <div style="margin-top:10px;">
         <label class="fc-label">備註</label>
@@ -1147,7 +1140,7 @@ function submitOrder() {
     小計:     document.getElementById('totalDisplay').textContent,
     取件時間: document.getElementById('f_due').value,
     付款方式: document.getElementById('f_payment').value,
-    付款狀態: document.getElementById('f_paid').value,
+    付款狀態: '未付款 (Unpaid)', // 目前無線上金流，一律送出為未付款，由店家取件收款後在後台更新
     訂單總計: document.getElementById('totalDisplay').textContent,
     sport:    currentSport === 'tennis' ? '網球' : '羽球',
     source:   'MST整合系統'
@@ -1268,7 +1261,6 @@ function resetForm() {
     cb.checked = false;
     cb.closest('.fc-addon-item').classList.remove('checked');
   });
-  document.getElementById('f_paid').selectedIndex = 0;
   calcTotal();
 }
 

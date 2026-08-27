@@ -211,6 +211,13 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--dark);color:var(--wh
 .string-pick-back{background:none;border:none;color:var(--primary);font-size:0.85rem;cursor:pointer;margin-bottom:10px;padding:0;font-family:'Noto Sans TC',sans-serif;}
 .cs-opt-row{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border:1.5px solid #dde1e7;border-radius:7px;background:#f8f9fa;font-size:0.88rem;color:#2c3e50;}
 .cs-opt-del{background:none;border:none;color:#e74c3c;font-size:1.05rem;cursor:pointer;padding:0 4px;line-height:1;}
+.order-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid #dde1e7;border-radius:8px;background:#f8f9fa;font-size:0.84rem;color:#2c3e50;}
+.order-row .or-info{flex:1;min-width:0;}
+.order-row .or-name{font-weight:700;}
+.order-row .or-meta{color:#8a94a3;font-size:0.76rem;margin-top:2px;}
+.order-pay-btn{flex-shrink:0;padding:7px 12px;border-radius:7px;border:none;font-weight:700;font-size:0.78rem;cursor:pointer;white-space:nowrap;}
+.order-pay-btn.unpaid{background:#fee2e2;color:#dc2626;}
+.order-pay-btn.paid{background:#dcfce7;color:#16a34a;}
 </style>
 </head>
 <body>
@@ -701,6 +708,19 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--dark);color:var(--wh
       <button class="btn-save" id="btn-reset-string-prices" style="background:var(--dark3);">還原本頁預設值</button>
     </div>
     <div id="stringPriceStatus" class="status-line"></div>
+  </div>
+
+  <!-- 訂單付款狀態管理 -->
+  <div class="settings-card">
+    <h3>💰 訂單付款狀態管理</h3>
+    <p style="font-size:0.82rem;color:var(--mid);margin-bottom:14px;">客戶線上送單一律先記錄為未付款，取件收款後在這裡標記為已付款。</p>
+
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <button type="button" class="btn-save" id="btn-refresh-orders" style="flex:1;margin-top:0;">🔄 重新整理訂單清單</button>
+    </div>
+
+    <div id="order-list" style="max-height:460px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding-right:4px;"></div>
+    <div id="orderListStatus" class="status-line"></div>
   </div>
     <h3>🔗 Google Apps Script 網址</h3>
     <div class="url-group"><label>穿線開單 Script URL</label><input type="text" id="set_orderUrl" placeholder="https://script.google.com/macros/s/..."></div>
@@ -2120,6 +2140,71 @@ function initApp() {
     });
   });
   buildStringPriceList();
+
+  // ── 訂單付款狀態管理 ──
+  function renderOrderList(orders) {
+    const wrap = document.getElementById('order-list');
+    wrap.innerHTML = '';
+    if (!orders.length) {
+      wrap.innerHTML = '<div style="color:var(--mid);font-size:0.85rem;text-align:center;padding:20px 0;">目前沒有訂單資料</div>';
+      return;
+    }
+    orders.forEach(o => {
+      const isPaid = o.status && o.status.indexOf('已付') !== -1;
+      const row = document.createElement('div');
+      row.className = 'order-row';
+      const info = document.createElement('div');
+      info.className = 'or-info';
+      info.innerHTML = `<div class="or-name">${o.name}${o.phone ? '（' + o.phone + '）' : ''}</div>
+        <div class="or-meta">${o.sport} · ${o.date || '—'} · ${o.pickup || '—'}</div>`;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'order-pay-btn ' + (isPaid ? 'paid' : 'unpaid');
+      btn.textContent = isPaid ? '✅ 已付款' : '❌ 未付款';
+      btn.addEventListener('click', () => togglePaymentStatus(o, btn));
+      row.appendChild(info);
+      row.appendChild(btn);
+      wrap.appendChild(row);
+    });
+  }
+
+  function togglePaymentStatus(o, btn) {
+    const isPaid = o.status && o.status.indexOf('已付') !== -1;
+    const newStatus = isPaid ? '未付款 (Unpaid)' : '已付款 (Paid)';
+    btn.disabled = true;
+    btn.textContent = '更新中...';
+    fetch(getBookUrl(), {
+      method: 'POST', mode: 'no-cors',
+      headers: {'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({ type: 'update_payment', sheet: o.sheet, row: o.row, status: newStatus })
+    }).then(() => {
+      o.status = newStatus;
+      btn.disabled = false;
+      btn.className = 'order-pay-btn ' + (newStatus.indexOf('已付') !== -1 ? 'paid' : 'unpaid');
+      btn.textContent = newStatus.indexOf('已付') !== -1 ? '✅ 已付款' : '❌ 未付款';
+    }).catch(() => {
+      btn.disabled = false;
+      btn.textContent = '⚠️ 更新失敗，點一下重試';
+    });
+  }
+
+  function fetchOrderList() {
+    const s = document.getElementById('orderListStatus');
+    s.className = 'status-line loading';
+    s.textContent = '讀取中...';
+    fetch(getBookUrl() + '?type=order_list')
+      .then(r => r.json())
+      .then(orders => {
+        s.textContent = '';
+        renderOrderList(Array.isArray(orders) ? orders : []);
+      })
+      .catch(() => {
+        s.className = 'status-line error';
+        s.textContent = '⚠️ 讀取失敗，請稍後再試';
+      });
+  }
+
+  document.getElementById('btn-refresh-orders')?.addEventListener('click', fetchOrderList);
 
   // 設定
   const oUrlEl = document.getElementById('set_orderUrl');

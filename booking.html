@@ -192,6 +192,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--dark);color:var(--wh
 }
 .urgent-time-btn:hover:not(:disabled) { border-color: #ef4444; background: rgba(239,68,68,0.1); }
 .urgent-time-btn.past { color: var(--mid); cursor: not-allowed; opacity: 0.4; }
+.urgent-time-btn.full { border-color:var(--dark3);background:var(--dark3);color:var(--mid);cursor:not-allowed;text-decoration:line-through;opacity:0.7; }
 
 @media(max-width:480px){
   .urgent-time-grid{grid-template-columns:repeat(2,1fr);}
@@ -1524,93 +1525,127 @@ function initApp() {
       document.getElementById('urgentConfirmSub').textContent = label;
       document.getElementById('urgentConfirmFee').textContent = '＋NT$' + fee;
 
-      // 產生收拍時間格子（10:00–22:00，每30分鐘）
-      // 過濾掉「已來不及」的時段
+      document.getElementById('urgentConfirmModal').classList.add('open');
       const grid = document.getElementById('urgentTimeGrid');
-      grid.innerHTML = '';
-      const now = new Date();
-      const nowMins = now.getHours() * 60 + now.getMinutes();
-      const shopOpen = 10 * 60;   // 10:00
-      const shopClose = 22 * 60;  // 22:00
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--mid);padding:16px 0;">讀取可預約時段中...</div>';
 
-      for (let h = 10; h < 22; h++) {
-        for (const m of [0, 30]) {
-          const slotMins = h * 60 + m;
-          const shopOpen  = 10 * 60;
-          const shopClose = 22 * 60;
-          const pickupMins = slotMins + hours * 60;
+      // 先抓今天已經被預約（含其他急件）佔用的時段，避免多位急件客人同時搶同一時段
+      const todayStr = toDateStr(new Date());
+      fetch(getBookUrl() + '?date=' + todayStr)
+        .then(r => r.json())
+        .then(booked => buildUrgentGrid(fee, label, hours, Array.isArray(booked) ? booked : []))
+        .catch(() => buildUrgentGrid(fee, label, hours, []));
+    });
+  });
 
-          let isPast = slotMins <= nowMins;
-          let pickupStr = '';
-          let pickupRaw = '';
+  function buildUrgentGrid(fee, label, hours, bookedToday) {
+    const grid = document.getElementById('urgentTimeGrid');
+    grid.innerHTML = '';
+    const now = new Date();
+    const nowMins = now.getHours() * 60 + now.getMinutes();
+    const shopOpen = 10 * 60;   // 10:00
+    const shopClose = 22 * 60;  // 22:00
+    const todayStr = toDateStr(new Date());
 
-          if (hours === 1) {
-            // 1小時急件：取件必須在22:00前
-            if (pickupMins > shopClose) isPast = true;
+    for (let h = 10; h < 21; h++) {
+      for (const m of [0, 30]) {
+        const slotMins = h * 60 + m;
+        const shopOpen  = 10 * 60;
+        const shopClose = 22 * 60;
+        const pickupMins = slotMins + hours * 60;
+
+        let isPast = slotMins <= nowMins;
+        let pickupStr = '';
+        let pickupRaw = '';
+
+        if (hours === 1) {
+          // 1小時急件：取件必須在22:00前
+          if (pickupMins > shopClose) isPast = true;
+          const pH = Math.floor(pickupMins / 60);
+          const pM = pickupMins % 60;
+          pickupStr = String(pH).padStart(2,'0') + ':' + String(pM).padStart(2,'0');
+          pickupRaw = pickupStr;
+
+        } else if (hours === 3) {
+          // 3小時急件：
+          // 19:00前 → 正常+3h當日取件
+          // 19:00後 → 超過22:00的分鐘數，從隔日10:00往後推
+          if (pickupMins <= shopClose) {
             const pH = Math.floor(pickupMins / 60);
             const pM = pickupMins % 60;
             pickupStr = String(pH).padStart(2,'0') + ':' + String(pM).padStart(2,'0');
             pickupRaw = pickupStr;
-
-          } else if (hours === 3) {
-            // 3小時急件：
-            // 19:00前 → 正常+3h當日取件
-            // 19:00後 → 超過22:00的分鐘數，從隔日10:00往後推
-            if (pickupMins <= shopClose) {
-              const pH = Math.floor(pickupMins / 60);
-              const pM = pickupMins % 60;
-              pickupStr = String(pH).padStart(2,'0') + ':' + String(pM).padStart(2,'0');
-              pickupRaw = pickupStr;
-            } else {
-              const overMins = pickupMins - shopClose;
-              const nextPickup = shopOpen + overMins;
-              const pH = Math.floor(nextPickup / 60);
-              const pM = nextPickup % 60;
-              pickupStr = '隔日 ' + String(pH).padStart(2,'0') + ':' + String(pM).padStart(2,'0');
-              pickupRaw = String(pH).padStart(2,'0') + ':' + String(pM).padStart(2,'0');
-            }
-
           } else {
-            // 12小時急件：
-            // 計算到22:00前還剩多少時間，剩餘時間從隔日10:00起算
-            const remainBeforeClose = shopClose - slotMins; // 收拍到22:00剩幾分鐘
-            const remainAfterOpen   = (hours * 60) - remainBeforeClose; // 從隔日10:00還需要幾分鐘
-            const nextPickup = shopOpen + remainAfterOpen;
+            const overMins = pickupMins - shopClose;
+            const nextPickup = shopOpen + overMins;
             const pH = Math.floor(nextPickup / 60);
             const pM = nextPickup % 60;
             pickupStr = '隔日 ' + String(pH).padStart(2,'0') + ':' + String(pM).padStart(2,'0');
             pickupRaw = String(pH).padStart(2,'0') + ':' + String(pM).padStart(2,'0');
           }
 
-          const timeStr = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
-
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'urgent-time-btn' + (isPast ? ' past' : '');
-          btn.disabled = isPast;
-          btn.innerHTML = `<div style="font-size:0.95rem;">${timeStr} 收</div><div style="font-size:0.72rem;color:${isPast?'#475569':'#f59e0b'};margin-top:2px;">→ ${pickupStr} 取</div>`;
-
-          if (!isPast) {
-            btn.addEventListener('click', () => {
-              window._urgentFee     = fee;
-              window._urgentLabel   = label;
-              window._urgentPickup  = pickupRaw;
-              window._urgentDropoff = timeStr;
-
-              document.getElementById('urgentConfirmModal').classList.remove('open');
-
-              // 跳到球拍選擇
-              prevStep = 'step1';
-              showStep('step3');
-            });
-          }
-          grid.appendChild(btn);
+        } else {
+          // 12小時急件：
+          // 計算到22:00前還剩多少時間，剩餘時間從隔日10:00起算
+          const remainBeforeClose = shopClose - slotMins; // 收拍到22:00剩幾分鐘
+          const remainAfterOpen   = (hours * 60) - remainBeforeClose; // 從隔日10:00還需要幾分鐘
+          const nextPickup = shopOpen + remainAfterOpen;
+          const pH = Math.floor(nextPickup / 60);
+          const pM = nextPickup % 60;
+          pickupStr = '隔日 ' + String(pH).padStart(2,'0') + ':' + String(pM).padStart(2,'0');
+          pickupRaw = String(pH).padStart(2,'0') + ':' + String(pM).padStart(2,'0');
         }
-      }
 
-      document.getElementById('urgentConfirmModal').classList.add('open');
-    });
-  });
+        const timeStr = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+
+        // 檢查這個收件時段是否已經額滿（跟一般預約共用同一份時段容量設定）
+        const cfg = getSlotConfig(timeStr);
+        const bookedCount = bookedToday.filter(x => x === timeStr).length;
+        const isFull = !isPast && (!cfg.open || bookedCount >= cfg.cap);
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'urgent-time-btn' + (isPast ? ' past' : isFull ? ' full' : '');
+        btn.disabled = isPast || isFull;
+        btn.innerHTML = `<div style="font-size:0.95rem;">${timeStr} 收${isFull ? '（滿）' : ''}</div><div style="font-size:0.72rem;color:${(isPast || isFull) ? '#475569' : '#f59e0b'};margin-top:2px;">→ ${pickupStr} 取</div>`;
+
+        if (!isPast && !isFull) {
+          btn.addEventListener('click', () => {
+            if (btn.disabled) return;
+            btn.disabled = true;
+            btn.innerHTML = '<div style="font-size:0.85rem;">保留中...</div>';
+
+            // 立即保留這個收件時段，避免其他急件客人同時搶到同一時段
+            fetch(getBookUrl(), {
+              method: 'POST', mode: 'no-cors',
+              headers: {'Content-Type':'text/plain;charset=utf-8'},
+              body: JSON.stringify({
+                type: 'booking',
+                timestamp: new Date().toLocaleString('zh-TW'),
+                date: todayStr,
+                time: timeStr,
+                name: '急件保留',
+                phone: '',
+                note: '急件收件保留位'
+              })
+            }).catch(() => {});
+
+            window._urgentFee     = fee;
+            window._urgentLabel   = label;
+            window._urgentPickup  = pickupRaw;
+            window._urgentDropoff = timeStr;
+
+            document.getElementById('urgentConfirmModal').classList.remove('open');
+
+            // 跳到球拍選擇
+            prevStep = 'step1';
+            showStep('step3');
+          });
+        }
+        grid.appendChild(btn);
+      }
+    }
+  }
 
   // 急件確認 Modal 關閉
   document.getElementById('urgentConfirmClose').addEventListener('click', () => {

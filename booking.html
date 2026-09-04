@@ -685,6 +685,18 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--dark);color:var(--wh
   </div>
 </div>
 
+<!-- 急件登記成功 Modal -->
+<div class="modal-overlay" id="urgentRegisteredModal">
+  <div class="modal-box" style="max-width:380px;text-align:center;">
+    <button class="modal-close" id="urgentRegisteredClose">✕</button>
+    <div style="font-size:2.6rem;line-height:1;margin-bottom:8px;">⚡</div>
+    <h3 style="color:#ef4444;margin-bottom:4px;">急件登記成功</h3>
+    <p style="font-size:0.8rem;color:var(--mid);margin-bottom:18px;">請截圖保存，取件時可出示此畫面</p>
+    <div id="urgentRegisteredBody" style="text-align:left;background:var(--dark);border:1.5px solid var(--dark3);border-radius:10px;padding:14px 18px;font-size:0.92rem;color:var(--white);"></div>
+    <button type="button" class="btn-confirm" id="urgentRegisteredContinue" style="margin-top:20px;background:#ef4444;">繼續填寫穿線單 →</button>
+  </div>
+</div>
+
 <!-- 線材選擇 Modal -->
 <div class="modal-overlay" id="stringPickModal">
   <div class="modal-box" style="max-width:400px;">
@@ -1432,6 +1444,21 @@ function showBookingReceipt(name, phone, count, slots) {
   document.getElementById('bookingReceiptModal').classList.add('open');
 }
 
+function showUrgentRegistered(label, dropoffTime, pickupStr, fee) {
+  const body = document.getElementById('urgentRegisteredBody');
+  const rows = [
+    ['急件類型', label],
+    ['收件時間', dropoffTime],
+    ['預計取件', pickupStr],
+    ['加收費用', '＋NT$' + fee],
+    ['登記時間', new Date().toLocaleString('zh-TW')]
+  ];
+  body.innerHTML = rows.map(([l, v]) =>
+    `<div class="receipt-row"><span class="rl">${l}</span><span class="rv">${v}</span></div>`
+  ).join('');
+  document.getElementById('urgentRegisteredModal').classList.add('open');
+}
+
 // 計算從 startTime 開始連續 n 個 30 分鐘時段
 function calcBookingSlots(startTime, n) {
   const slots = [];
@@ -1636,10 +1663,7 @@ function initApp() {
             window._urgentDropoff = timeStr;
 
             document.getElementById('urgentConfirmModal').classList.remove('open');
-
-            // 跳到球拍選擇
-            prevStep = 'step1';
-            showStep('step3');
+            showUrgentRegistered(label, timeStr, pickupStr, fee);
           });
         }
         grid.appendChild(btn);
@@ -1778,6 +1802,16 @@ function initApp() {
   });
   document.getElementById('stringingTicketDone').addEventListener('click', () => {
     document.getElementById('stringingTicketModal').classList.remove('open');
+  });
+  document.getElementById('urgentRegisteredClose').addEventListener('click', () => {
+    document.getElementById('urgentRegisteredModal').classList.remove('open');
+    prevStep = 'step1';
+    showStep('step3');
+  });
+  document.getElementById('urgentRegisteredContinue').addEventListener('click', () => {
+    document.getElementById('urgentRegisteredModal').classList.remove('open');
+    prevStep = 'step1';
+    showStep('step3');
   });
   document.getElementById('confirmBookAndString').addEventListener('click', () => confirmBooking(true));
   document.getElementById('confirmBookDone').addEventListener('click', () => confirmBooking(false));
